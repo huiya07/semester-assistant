@@ -4,14 +4,17 @@
 > 用户开场白通常是「读 PROGRESS.md，继续 Task N」。不要去重新调研比赛规则（摘要见 `docs/比赛要求摘要.md`），不要重新讨论已定决策（见 `docs/决策记录.md`）。
 
 **最后更新：** 2026-10-25
-**当前状态：** Task 1 完成；Task 7 的「周次 + 周视图 + 作业到期」已完成并验证（第 7/8 周均跑通）
-**当前任务：** Task 2（PDF 解析与切片）——**10-27 前必须跑通**
-**下一步具体动作：** 写 `backend/app/parser.py` 的 `parse_pdf()`，用一份公开教材 PDF 验证逐页文本与页码
-**已完成的任务：** Task 1（骨架）、Task 7a（课表 + 作业 + 周视图 CLI）
+**当前状态：** Task 1、Task 2、Task 7a 完成。解析实测：arXiv 论文 15 页 / 39483 字符 / 82 片；无文本层与文件不存在两种边界已验证
+**当前任务：** Task 3（向量化与检索）
+**下一步具体动作：** 接入 Chroma，实现 `upsert()` / `search()`，用同一篇论文验证召回
+**已完成的任务：** Task 1（骨架）、Task 2（解析与切片）、Task 7a（课表 + 作业 + 周视图 CLI）
 **已冻结的接口：**
 - `config.py`：`ROOT`、`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`CHROMA_DIR`、`DATA_DIR`、`SEMESTER_START`、`require_api_key()`
 - `main.py`：`app`（FastAPI 实例），`GET /health` → `{status, llm_configured}`
 - `semester.py`：`load_courses()`、`load_assignments()`、`week_no(d)`、`week_monday(d)`、`assignments_due_on(d)`、`upcoming_assignments(d, within_days=14)`、`week_view(d) -> dict{week_no, monday, days[], course_count, upcoming[]}`，每天 `{date, weekday, is_today, courses[], due[]}`
+- `parser.py`：`NoTextLayerError`、`file_doc_id(path) -> str`、`parse_pdf(path) -> ParsedDoc{doc_id, filename, pages[{page_no, text}], blank_pages[]}`，另有属性 `page_count`、`text_length`
+- `chunker.py`：`chunk_doc(doc, size=600, overlap=80) -> list[Chunk{chunk_id, doc_id, page_no, ordinal, text}]`；不跨页；chunk_id 形如 `{doc_id}-p{page}-{ordinal:03d}`
+- CLI：`week [YYYY-MM-DD]`、`parse <pdf路径>`
 - `data/courses.json`：`{_meta, courses[{name, day, start_section, end_section, weeks[], start_time, end_time}]}`（已脱敏，无教师/教室）
 - `data/assignments.json`：`{_meta, assignments[{id, course, title, due_date}]}`（示例数据，课程名对应真实课表，内容虚构）
 - CLI：`uv run python -m backend.cli week [YYYY-MM-DD]`
