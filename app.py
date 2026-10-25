@@ -19,7 +19,7 @@ import streamlit as st
 from backend.app.chunker import chunk_doc
 from backend.app.parser import NoTextLayerError, parse_pdf
 from backend.app.qa import answer
-from backend.app.render import render_page
+from backend.app.render import page_text, render_page, split_by_excerpt
 from backend.app.semester import week_view
 from backend.app.store import Store
 
@@ -27,14 +27,33 @@ st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 
 
 def show_citation(c, title_prefix: str) -> None:
-    """出处卡片：默认收起；展开先看到检索片段，再点开关才渲染原页图像。"""
+    """出处卡片：默认收起。
+
+    展开后分三层：
+    1. 你问到的部分（检索命中的片段，蓝色块标出）
+    2. 该页完整文本（可滚动），方便看上下文，避免「只给半段」
+    3. 开关：渲染该页原貌图像
+    """
     with st.expander(f"{title_prefix} · 《{c['doc_name']}》第 {c['page_no']} 页"):
-        st.caption("检索到的原文片段")
-        st.write(c["text"])
+        pdf = Path(c["pdf_file"]) if c.get("pdf_file") else None
+        full = page_text(pdf, c["page_no"]) if pdf else None
+        parts = split_by_excerpt(full, c["text"]) if full else None
+
+        if parts and parts[1].strip():
+            st.caption("🎯 你问到的部分")
+            st.info(parts[1])
+        else:
+            st.caption("🎯 检索命中的片段")
+            st.info(c["text"])
+
+        if full and len(full) > len(c["text"]) + 40:
+            st.caption(f"第 {c['page_no']} 页全文（共 {len(full)} 字，可滚动）")
+            with st.container(height=260):
+                st.text(full)
 
         toggle_key = f"page_{c.get('doc_id', '')}_{c['page_no']}_{c['index']}"
         if st.toggle("🔍 查看该页原貌", key=toggle_key):
-            png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
+            png = render_page(pdf, c["page_no"]) if pdf else None
             if png:
                 st.image(png, width="stretch")
             else:
