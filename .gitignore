@@ -27,3 +27,6 @@ Thumbs.db
 # 录音录像临时文件
 *.mp4
 *.mov
+
+# 文档导出中间产物
+docs/_*.html
