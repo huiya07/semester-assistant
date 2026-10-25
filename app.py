@@ -21,6 +21,7 @@ from backend.app.parser import NoTextLayerError, parse_pdf
 from backend.app.qa import answer
 from backend.app.render import page_count, render_page
 from backend.app.semester import week_view
+from backend.app.settings import LLMSettings, load as load_settings, save as save_settings
 from backend.app.store import Store
 
 st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
@@ -128,6 +129,40 @@ with st.sidebar:
         st.caption(f"· {d['doc_name']}（{d['chunks']} 片）")
     if not docs:
         st.caption("还是空的，先传一份 PDF。")
+
+    # ---- 模型配置 ----
+    st.divider()
+    cur = load_settings()
+    with st.expander("⚙ 模型配置" + ("" if cur.ready else "（未配置）")):
+        st.caption("支持任何 OpenAI 兼容端点。保存后写入 `local/settings.json`，不会进仓库。")
+        with st.form("llm_settings"):
+            base_url = st.text_input("API Base URL", value=cur.base_url)
+            api_key = st.text_input(
+                "API Key",
+                value="",
+                type="password",
+                placeholder="已配置" if cur.ready else "sk-...",
+                help="留空表示沿用现有配置",
+            )
+            model = st.text_input("模型名", value=cur.model)
+            col_save, col_clear = st.columns(2)
+            submitted = col_save.form_submit_button("保存", type="primary", use_container_width=True)
+            cleared = col_clear.form_submit_button("清除", use_container_width=True)
+
+        if submitted:
+            new_key = api_key.strip() or cur.api_key
+            if not new_key:
+                st.error("API Key 不能为空。")
+            else:
+                path = save_settings(LLMSettings(base_url.strip(), new_key, model.strip()))
+                st.success(f"已保存到 {path.name}，下一条消息生效。")
+                st.rerun()
+        if cleared:
+            from backend.app.settings import clear as clear_settings
+
+            clear_settings()
+            st.info("已清除界面配置，回退到 .env。")
+            st.rerun()
 
 # ---------------- 主区 ----------------
 tab_ask, tab_week = st.tabs(["💬 资料问答", "📅 这周该做什么"])

@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 
 from openai import OpenAI
 
-from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, require_api_key
+from .config import require_api_key
+from .settings import load as load_settings
 from .store import Hit, Store
 
 # 检索结果全部比这个还差，就不必问模型了。实测：正确命中 0.44~0.49，无关 0.54~0.88
@@ -55,7 +56,11 @@ class Answer:
 
 
 def _client() -> OpenAI:
-    return OpenAI(api_key=require_api_key(), base_url=DEEPSEEK_BASE_URL)
+    """取运行期配置：界面保存的优先，其次 .env。"""
+    s = load_settings()
+    if not s.ready:
+        require_api_key()  # 抛出可执行的报错提示
+    return OpenAI(api_key=s.api_key, base_url=s.base_url)
 
 
 def _format_context(hits: list[Hit]) -> str:
@@ -176,8 +181,9 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
         },
     ]
     try:
+        s = load_settings()
         resp = _client().chat.completions.create(
-            model=DEEPSEEK_MODEL,
+            model=s.model,
             messages=messages,
             temperature=0,
             max_tokens=800,
