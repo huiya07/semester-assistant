@@ -1,13 +1,15 @@
 """把本项目的 AI 对话导出成可交付的快照（比赛要求「AI 对话历史导出」）。
 
-处理原则：
+> 处理原则：
 1. 只取 user / assistant 的**文本**，工具调用与结果一律丢掉（体积大且无意义）
 2. 脱敏：API key、报名 UID、手机号、绝对路径、学校名、班级号
 3. 截断过长的回复，保证文件可读（评委要能翻）
 4. 不做筛选式「美化」：保留对话原样，包括失败与返工
+5. **只从项目正式启动那一刻开始导**（2026-10-25 16:00，建仓库、写代码），
+   之前的赛道调研与闲聊属于个人事务，不进评审材料
 
 用法：
-    uv run python tools/export_prompt_history.py <session.jsonl> [输出路径]
+    uv run python tools/export_prompt_history.py [session.jsonl] [输出路径] [起始时间 ISO]
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +29,10 @@ DEFAULT_SRC = (
     / "6d3fe149-eabe-44d7-8fca-e4b10c078e13.jsonl"
 )
 OUT = ROOT / "docs" / "prompts" / "raw" / "session-2026-10-25.md"
+# 项目正式启动时间（本地时间）：首次 git commit 是 16:15，从 16:00 起算
+# 注意：会话记录里的 timestamp 是 UTC（带 Z 结尾），比较前要换算
+DEFAULT_SINCE = "2026-10-25T16:00:00"
+LOCAL_UTC_OFFSET_HOURS = 8
 
 MAX_ASSISTANT_CHARS = 400  # 回复过长只留开头，避免文件膨胀
 
@@ -78,6 +85,11 @@ def content_text(message: dict) -> str:
 def main() -> None:
     src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SRC
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else OUT
+    since = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_SINCE
+    # 会话时间戳是 UTC，本地时间要减去时区偏移再比较
+    since_utc = (
+        datetime.fromisoformat(since) - timedelta(hours=LOCAL_UTC_OFFSET_HOURS)
+    ).strftime("%Y-%m-%dT%H:%M:%S")
     if not src.exists():
         raise SystemExit(f"找不到会话文件：{src}")
 
@@ -89,6 +101,9 @@ def main() -> None:
             except json.JSONDecodeError:
                 continue
             if d.get("type") not in ("user", "assistant"):
+                continue
+            ts = d.get("timestamp", "")[:19]
+            if ts < since_utc:  # 项目正式启动之前的一律不要
                 continue
             text = content_text(d.get("message", {}))
             if not text:
@@ -107,7 +122,9 @@ def main() -> None:
         "# AI 对话历史（节选）",
         "",
         "> 本项目全程以「人定义意图、AI 生成实现、人验收纠偏」的方式开发。",
-        "> 以下为该会话的对话快照，已脱敏（密钥、UID、手机号、本地路径、学校与班级、GitHub 用户名），",
+        f"> 以下从**项目正式启动**（{DEFAULT_SINCE.replace('T', ' ')}，开始建仓库写代码）开始记录，",
+        "> 之前的需求调研属于个人事务，不纳入本文档。",
+        "> 已脱敏（密钥、UID、手机号、本地路径、学校与班级、GitHub 用户名），",
         "> 并省略了工具调用与命令输出，只保留对话文本。原对话中的截图未包含在本文档内。",
         "",
         f"**统计：** {len(turns)} 轮（user {sum(1 for t in turns if t[1]=='user')} / "
