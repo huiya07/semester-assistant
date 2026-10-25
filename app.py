@@ -27,15 +27,34 @@ from backend.app.store import Store
 
 st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 
+# 弹窗默认贴着页面顶部、且无过渡；这里改成垂直居中并加淡入
+st.markdown(
+    """
+    <style>
+    div[data-testid="stDialog"] {
+        align-items: center !important;
+        padding-top: 0 !important;
+    }
+    div[data-testid="stDialog"] > div {
+        animation: sa-dialog-in 0.18s ease-out both;
+    }
+    @keyframes sa-dialog-in {
+        from { opacity: 0; transform: translateY(10px) scale(0.98); }
+        to   { opacity: 1; transform: none; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 @st.dialog("确认删除")
 def confirm_delete(doc_id: str, doc_name: str, chunks: int) -> None:
     st.markdown(f"要删除 **《{doc_name}》** 吗？")
-    st.caption(f"将删除 {chunks} 个检索片段与留底的原件，并清空当前对话。此操作无法撤销。")
+    st.caption(f"将删除 {chunks} 个检索片段与留底的原件。此操作无法撤销。")
     col_yes, col_no = st.columns(2)
     if col_yes.button("确认删除", type="primary", use_container_width=True):
         get_store().purge_document(doc_id)
-        st.session_state.pop("history", None)
         st.rerun()
     if col_no.button("取消", use_container_width=True):
         st.rerun()
@@ -65,6 +84,12 @@ def show_citation(c, title_prefix: str, key_prefix: str) -> None:
 
         pdf = Path(c["pdf_file"]) if c.get("pdf_file") else None
         base_key = f"{key_prefix}_{c['page_no']}_{c['index']}"
+        # 引用的资料可能已被删除：保留对话，但明确告知，而不是留白
+        available = bool(pdf and pdf.exists())
+
+        if not available:
+            st.caption("⚠ 该资料已从资料库删除，无法查看原页；上面的片段是当时的检索结果。")
+            return
 
         if total <= 1:
             if st.toggle("🔍 查看原页", key=base_key + "_one"):
