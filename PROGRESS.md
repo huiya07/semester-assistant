@@ -15,7 +15,7 @@
 - `semester.py`：`load_courses()`、`load_assignments()`、`week_no(d)`、`week_monday(d)`、`assignments_due_on(d)`、`upcoming_assignments(d, within_days=14)`、`week_view(d) -> dict{week_no, monday, days[], course_count, upcoming[], before_semester}`，每天 `{date, weekday, is_today, courses[], due[]}`
 - `parser.py`：`NoTextLayerError`、`file_doc_id(path) -> str`、`parse_pdf(path) -> ParsedDoc{doc_id, filename, pages[{page_no, text}], blank_pages[]}`，另有属性 `page_count`、`text_length`
 - `chunker.py`：`chunk_doc(doc, size=600, overlap=80) -> list[Chunk{chunk_id, doc_id, doc_name, page_no, ordinal, text}]`；不跨页；优先在句末/空行断开；chunk_id 形如 `{doc_id}-p{page}-{ordinal:03d}`
-- `embedding.py`：`BGEEmbeddingFunction`（BAAI/bge-small-zh-v1.5，384 维，`embed_documents` 不加前缀 / `embed_query` 加指令前缀）、`MODEL_TAG="bge_zh"`、`MODEL_NAME`
+- `embedding.py`：`BGEEmbeddingFunction`（BAAI/bge-small-zh-v1.5，**512 维**，`embed_documents` 不加前缀 / `embed_query` 加指令前缀）、`MODEL_TAG="bge_zh"`、`MODEL_NAME`
 - `store.py`：`Store(path?)`、`upsert(chunks) -> int`、`delete_doc(doc_id)`、`search(query, top_k=5) -> list[Hit{chunk_id, doc_id, doc_name, page_no, text, distance, score}]`、`count()`、`docs()[{doc_id, doc_name, chunks}]`；集合名 `chunks_bge_zh_v1`；数据在 `chroma_data/`（gitignore）
 - `qa.py`：`answer(question, top_k=8, store?) -> Answer{status: ok|not_found|error, text, citations[{index, chunk_id, doc_id, doc_name, page_no, text}], related[], searched[], best_distance}`；`MAX_DISTANCE=0.65`；`NO_ANSWER_MARK`；三层防线（阈值拦截 / prompt 约束 / 引用编号校验）+ 同文档优先 `_select_context`
 - `app.py`：Streamlit 界面，`uv run streamlit run app.py`，两个 tab（资料问答 / 这周该做什么）
