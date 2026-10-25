@@ -27,14 +27,20 @@ NOTE = """学期助手（Semester Assistant）
 找不到会明确说找不到；另有一张「这周该做什么」的课表/作业视图。
 
 【怎么跑】（需要 Python 3.12+ 和 uv）
-  1. uv sync
-  2. copy .env.example .env   然后把 DEEPSEEK_API_KEY 填进去
-  3. uv run streamlit run app.py
+  推荐一步到位：
+    .\setup.ps1
+  它会从华为云镜像安装依赖并启动界面。
+
+  手动三步也可以：
+    1. uv sync --default-index https://repo.huaweicloud.com/repository/pypi/simple
+    2. copy .env.example .env   然后把 DEEPSEEK_API_KEY 填进去
+    3. uv run streamlit run app.py
   浏览器打开 http://127.0.0.1:8501
 
   ★ 首次运行需要联网下载：Python 依赖约 1GB + 中文嵌入模型约 100MB。
-    嵌入模型已默认走国内镜像 hf-mirror.com，无需额外配置。
-    依赖下载慢可先设镜像：$env:UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+    · 嵌入模型已默认走国内镜像 hf-mirror.com，无需额外配置。
+    · 官方 PyPI 的 wheel 下载在部分网络下会被拒绝（403），所以默认用华为云镜像
+      （实测 7.5 MB/s）；如果镜像不可用，去掉 --default-index 参数改用官方源。
 
   也可以跳过改 .env：界面打开后直接在「⚙ 模型配置」里填 Key。
 
@@ -43,9 +49,10 @@ NOTE = """学期助手（Semester Assistant）
   无版权的 3 页中文讲义，直接上传即可跑通全流程。
 
 【文档】
-  作品介绍.pdf                     作品介绍（7 项要求）
-  docs/技术说明.md                 架构与关键设计（如有）
-  docs/prompts/                    开发过程中的 Prompt 链留档
+  作品介绍.pdf                     作品介绍（7 项要求，含 5 张界面截图）
+  docs/prompts/                    开发过程中的四条 Prompt 链留档
+  docs/prompts/raw/                原始 AI 对话记录（已脱敏）
+  docs/决策记录.md                 每个技术取舍的理由
 
 【源码仓库】
   https://github.com/huiya07/semester-assistant
