@@ -335,7 +335,16 @@ with tab_ask:
         st.rerun()
 
 with tab_week:
-    st.caption("示例数据 · 可在下方导入自己的课表与作业")
+    from backend.app.semester import USER_DATA_DIR as _USER_DATA
+
+    _has_custom = (_USER_DATA / "courses.json").exists() or (
+        _USER_DATA / "assignments.json"
+    ).exists()
+    st.caption(
+        "**自定义课表** · 可在下方更换或恢复示例"
+        if _has_custom
+        else "示例数据 · 可在下方导入自己的课表与作业"
+    )
     view = None
     try:
         view = week_view(date.today())
