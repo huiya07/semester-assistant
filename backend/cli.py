@@ -3,6 +3,9 @@
 用法：
     uv run python -m backend.cli week [YYYY-MM-DD]
     uv run python -m backend.cli parse <pdf路径>
+    uv run python -m backend.cli index <pdf路径>
+    uv run python -m backend.cli search <问题>
+    uv run python -m backend.cli stats
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ from pathlib import Path
 from .app.chunker import chunk_doc
 from .app.parser import NoTextLayerError, parse_pdf
 from .app.semester import week_view
+from .app.store import Store
 
 
 def cmd_week(arg: str | None = None) -> None:
@@ -68,12 +72,55 @@ def cmd_parse(path_str: str) -> None:
         print("  " + last.text[:180].replace("\n", " ") + "…")
 
 
+def cmd_index(path_str: str) -> None:
+    path = Path(path_str)
+    try:
+        doc = parse_pdf(path)
+    except NoTextLayerError as e:
+        print(f"[无法解析] {e}")
+        return
+
+    chunks = chunk_doc(doc)
+    store = Store()
+    store.delete_doc(doc.doc_id)  # 重入库先清旧的，避免切片参数变化后残留
+    n = store.upsert(chunks)
+    print(f"已入库：{doc.filename}")
+    print(f"doc_id：{doc.doc_id}   页数：{doc.page_count}   写入切片：{n}")
+    print(f"库内总切片：{store.count()}")
+
+
+def cmd_search(query: str, top_k: int = 5) -> None:
+    store = Store()
+    print(f"库内总切片：{store.count()}")
+    hits = store.search(query, top_k=top_k)
+    if not hits:
+        print("没有命中（库是空的，或问题为空）。")
+        return
+    print("-" * 46)
+    for i, h in enumerate(hits, 1):
+        print(f"[{i}] p{h.page_no}  distance={h.distance:.4f}  score={h.score:.3f}")
+        print("    " + h.text[:150].replace("\n", " ") + "…")
+
+
+def cmd_stats() -> None:
+    store = Store()
+    print(f"库内总切片：{store.count()}")
+    for d in store.docs():
+        print(f"  {d['doc_id']}  {d['chunks']} 片")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if not args or args[0] == "week":
         cmd_week(args[1] if len(args) > 1 else None)
     elif args[0] == "parse" and len(args) > 1:
         cmd_parse(args[1])
+    elif args[0] == "index" and len(args) > 1:
+        cmd_index(args[1])
+    elif args[0] == "search" and len(args) > 1:
+        cmd_search(" ".join(args[1:]))
+    elif args[0] == "stats":
+        cmd_stats()
     else:
         print(__doc__)
 
