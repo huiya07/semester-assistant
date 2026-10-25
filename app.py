@@ -130,39 +130,40 @@ with st.sidebar:
     if not docs:
         st.caption("还是空的，先传一份 PDF。")
 
-    # ---- 模型配置 ----
-    st.divider()
-    cur = load_settings()
-    with st.expander("⚙ 模型配置" + ("" if cur.ready else "（未配置）")):
-        st.caption("支持任何 OpenAI 兼容端点。保存后写入 `local/settings.json`，不会进仓库。")
-        with st.form("llm_settings"):
-            base_url = st.text_input("API Base URL", value=cur.base_url)
-            api_key = st.text_input(
-                "API Key",
-                value="",
-                type="password",
-                placeholder="已配置" if cur.ready else "sk-...",
-                help="留空表示沿用现有配置",
-            )
-            model = st.text_input("模型名", value=cur.model)
-            col_save, col_clear = st.columns(2)
-            submitted = col_save.form_submit_button("保存", type="primary", use_container_width=True)
-            cleared = col_clear.form_submit_button("清除", use_container_width=True)
+# ---------------- 主区顶部：模型配置 ----------------
+settings_now = load_settings()
+with st.expander(
+    "⚙ 模型配置" + ("" if settings_now.ready else " · ⚠ 还没配置 Key，点这展开"),
+    expanded=not settings_now.ready,
+):
+    st.caption("支持任何 OpenAI 兼容端点。保存后写入 `local/settings.json`，不进仓库。")
+    with st.form("llm_settings"):
+        base_url = st.text_input("API Base URL", value=settings_now.base_url)
+        api_key = st.text_input(
+            "API Key",
+            value="",
+            type="password",
+            placeholder="已配置，留空表示不改" if settings_now.ready else "sk-...",
+        )
+        model = st.text_input("模型名", value=settings_now.model)
+        col_save, col_clear = st.columns(2)
+        submitted = col_save.form_submit_button("保存", type="primary", use_container_width=True)
+        cleared = col_clear.form_submit_button("清除（回退到 .env）", use_container_width=True)
 
-        if submitted:
-            new_key = api_key.strip() or cur.api_key
-            if not new_key:
-                st.error("API Key 不能为空。")
-            else:
-                path = save_settings(LLMSettings(base_url.strip(), new_key, model.strip()))
-                st.success(f"已保存到 {path.name}，下一条消息生效。")
-                st.rerun()
-        if cleared:
-            from backend.app.settings import clear as clear_settings
-
-            clear_settings()
-            st.info("已清除界面配置，回退到 .env。")
+    if submitted:
+        new_key = api_key.strip() or settings_now.api_key
+        if not new_key:
+            st.error("API Key 不能为空。")
+        else:
+            save_settings(LLMSettings(base_url.strip(), new_key, model.strip()))
+            st.success("已保存，下一条消息生效。")
             st.rerun()
+    if cleared:
+        from backend.app.settings import clear as clear_settings
+
+        clear_settings()
+        st.info("已清除界面配置，回退到 .env。")
+        st.rerun()
 
 # ---------------- 主区 ----------------
 tab_ask, tab_week = st.tabs(["💬 资料问答", "📅 这周该做什么"])
@@ -173,12 +174,22 @@ with tab_ask:
 
     if not st.session_state.history:
         if store.count() == 0:
-            st.markdown("#### 先加一份资料")
+            st.markdown("### 三步就能用起来")
             st.markdown(
-                "左侧 **添加资料** 上传任意带文本层的 PDF，然后点「加入资料库」。\n\n"
-                "仓库自带一份示例讲义，可以直接用：\n\n"
+                "**① 加一份资料**　\n"
+                "左侧「添加资料」上传 PDF，然后点「加入资料库」。\n"
+                "仓库自带一份示例讲义，路径直接复制：\n\n"
                 "```text\nbackend/samples/sample-lecture-notes.pdf\n```"
             )
+            st.markdown(
+                "**② 提问**　\n"
+                "在下方输入框问资料里的内容，每个回答都会标 `[1]` 这样的出处。"
+            )
+            st.markdown(
+                "**③ 核对**　\n"
+                "点开出处，能看到命中的原文，还可以展开原页对照。"
+            )
+            st.info("资料里没有的内容，它会直接说找不到，并把最接近的原文摆出来——不会编。")
         else:
             first_doc = store.docs()[0]["doc_name"]
             st.markdown("#### 试试问：")
