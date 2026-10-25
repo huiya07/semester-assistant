@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -39,9 +40,12 @@ with st.sidebar:
     up = st.file_uploader("添加资料（PDF）", type=["pdf"])
     if up is not None and st.button("加入资料库", type="primary", use_container_width=True):
         with st.spinner("解析并建立索引…"):
-            tmp = Path(tempfile.gettempdir()) / f"upload_{up.name}"
-            tmp.write_bytes(up.getbuffer())
+            # 用独立临时目录并保留原文件名：doc_name 取自文件名，
+            # 否则侧边栏和出处会显示成 upload_xxx.pdf
+            tmpdir = Path(tempfile.mkdtemp())
+            tmp = tmpdir / up.name
             try:
+                tmp.write_bytes(up.getbuffer())
                 doc = parse_pdf(tmp)
             except NoTextLayerError as e:
                 st.error(str(e))
@@ -49,6 +53,8 @@ with st.sidebar:
                 store.delete_doc(doc.doc_id)
                 n = store.upsert(chunk_doc(doc))
                 st.success(f"已入库：{doc.filename}\n\n{doc.page_count} 页 · {n} 个片段")
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     st.divider()
     docs = store.docs()
@@ -76,15 +82,21 @@ with tab_ask:
     for item in st.session_state.history:
         with st.chat_message("user"):
             st.markdown(item["q"])
-        with st.chat_message("assistant"):
-            st.markdown(item["text"])
+        with st.chat_message("assistant", avatar="⚠️" if item["status"] == "error" else None):
+            if item["status"] == "error":
+                st.error(item["text"])
+            else:
+                st.markdown(item["text"])
             if item["status"] == "not_found" and item.get("searched"):
                 st.caption("🔍 " + item["searched"])
             for c in item["citations"]:
-                with st.expander(f"📄 出处 [{c['index']}] · 第 {c['page_no']} 页"):
+                with st.expander(f"📄 出处 [{c['index']}] · 《{c['doc_name']}》第 {c['page_no']} 页"):
                     st.write(c["text"])
             for c in item.get("related", []):
-                with st.expander(f"📄 最接近的内容 · 第 {c['page_no']} 页", expanded=False):
+                with st.expander(
+                    f"📄 最接近的内容 · 《{c['doc_name']}》第 {c['page_no']} 页",
+                    expanded=False,
+                ):
                     st.write(c["text"])
 
     q = st.chat_input("问点什么…")
@@ -97,11 +109,11 @@ with tab_ask:
                 "status": res.status,
                 "text": res.text,
                 "citations": [
-                    {"index": c.index, "page_no": c.page_no, "text": c.text}
+                    {"index": c.index, "doc_name": c.doc_name, "page_no": c.page_no, "text": c.text}
                     for c in res.citations
                 ],
                 "related": [
-                    {"index": c.index, "page_no": c.page_no, "text": c.text}
+                    {"index": c.index, "doc_name": c.doc_name, "page_no": c.page_no, "text": c.text}
                     for c in res.related
                 ],
                 "searched": "；".join(res.searched),
@@ -111,22 +123,25 @@ with tab_ask:
 
 with tab_week:
     view = week_view(date.today())
-    st.subheader(f"第 {view['week_no']} 周 · {view['monday']} 起")
+    if view.get("before_semester"):
+        st.info(f"学期还没开始（开学日 {view['monday']}）。")
+    else:
+        st.subheader(f"第 {view['week_no']} 周 · {view['monday']} 起")
 
-    cols = st.columns(7)
-    for col, day in zip(cols, view["days"]):
-        with col:
-            st.markdown(f"**{day['weekday']}**" + (" 🔵" if day["is_today"] else ""))
-            st.caption(day["date"][5:])
-            if not day["courses"] and not day["due"]:
-                st.caption("—")
-                continue
-            for c in day["courses"]:
-                st.markdown(f"{c['name']}")
-                st.caption(c["slot"])
-            for a in day["due"]:
-                st.markdown(f":red[⚠ {a['course']}]")
-                st.caption(a["title"])
+        cols = st.columns(7)
+        for col, day in zip(cols, view["days"]):
+            with col:
+                st.markdown(f"**{day['weekday']}**" + (" 🔵" if day["is_today"] else ""))
+                st.caption(day["date"][5:])
+                if not day["courses"] and not day["due"]:
+                    st.caption("—")
+                    continue
+                for c in day["courses"]:
+                    st.markdown(f"{c['name']}")
+                    st.caption(c["slot"])
+                for a in day["due"]:
+                    st.markdown(f":red[⚠ {a['course']}]")
+                    st.caption(a["title"])
 
     if view["upcoming"]:
         st.divider()

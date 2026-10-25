@@ -25,6 +25,10 @@ def cmd_week(arg: str | None = None) -> None:
     d = datetime.strptime(arg, "%Y-%m-%d").date() if arg else date.today()
     view = week_view(d)
 
+    if view.get("before_semester"):
+        print(f"学期还没开始（开学日 {view['monday']}）。")
+        return
+
     print(f"第 {view['week_no']} 周 · {view['monday']} 起 · 共 {view['course_count']} 节课")
     print("-" * 46)
     for day in view["days"]:
@@ -53,6 +57,9 @@ def cmd_parse(path_str: str) -> None:
     path = Path(path_str)
     try:
         doc = parse_pdf(path)
+    except FileNotFoundError as e:
+        print(f"[文件不存在] {e}")
+        return
     except NoTextLayerError as e:
         print(f"[无法解析] {e}")
         return
@@ -77,6 +84,9 @@ def cmd_index(path_str: str) -> None:
     path = Path(path_str)
     try:
         doc = parse_pdf(path)
+    except FileNotFoundError as e:
+        print(f"[文件不存在] {e}")
+        return
     except NoTextLayerError as e:
         print(f"[无法解析] {e}")
         return
@@ -121,12 +131,12 @@ def cmd_ask(question: str) -> None:
         print("-" * 46)
         print("引用出处：")
         for c in res.citations:
-            print(f"  [{c.index}] p{c.page_no}  {c.text[:90].replace(chr(10), ' ')}…")
+            print(f"  [{c.index}] 《{c.doc_name}》第 {c.page_no} 页  {c.text[:80].replace(chr(10), ' ')}…")
     if res.related:
         print("-" * 46)
         print("最接近的内容：")
         for c in res.related:
-            print(f"  [{c.index}] p{c.page_no}  {c.text[:90].replace(chr(10), ' ')}…")
+            print(f"  [{c.index}] 《{c.doc_name}》第 {c.page_no} 页  {c.text[:80].replace(chr(10), ' ')}…")
     if res.searched:
         print("-" * 46)
         for s in res.searched:

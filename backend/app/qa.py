@@ -38,6 +38,7 @@ class Citation:
     index: int
     chunk_id: str
     doc_id: str
+    doc_name: str
     page_no: int
     text: str
 
@@ -85,6 +86,7 @@ def _to_citation(index: int, hit: Hit) -> Citation:
         index=index,
         chunk_id=hit.chunk_id,
         doc_id=hit.doc_id,
+        doc_name=hit.doc_name,
         page_no=hit.page_no,
         text=hit.text,
     )
@@ -171,13 +173,21 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
             "content": f"资料片段：\n\n{_format_context(hits)}\n\n问题：{question}",
         },
     ]
-    resp = _client().chat.completions.create(
-        model=DEEPSEEK_MODEL,
-        messages=messages,
-        temperature=0,
-        max_tokens=800,
-    )
-    raw = (resp.choices[0].message.content or "").strip()
+    try:
+        resp = _client().chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=messages,
+            temperature=0,
+            max_tokens=800,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+    except Exception as e:  # 断网、超时、额度不足都走这里
+        return Answer(
+            status="error",
+            text="调用大模型失败，请检查网络或 API 配置后重试。",
+            searched=[f"错误类型：{type(e).__name__}"],
+            best_distance=best,
+        )
 
     if NO_ANSWER_MARK in raw:
         return _not_found(hits, best)

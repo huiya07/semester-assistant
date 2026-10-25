@@ -4,16 +4,19 @@
 只保留学期视图真正需要的字段。
 
 用法：
-    uv run python tools/build_courses.py [源文件路径]
+    uv run python tools/build_courses.py <源课表 JSON 路径>
+
+源文件格式（拾光课表导出）：{"courses": [{name, teacher, position, day,
+startSection, endSection, weeks, customStartTime, customEndTime}, ...]}
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
-DEFAULT_SOURCE = Path(r"D:\maybe\Documents\课表\AI26102班课表拾光导入(5).json")
 OUTPUT = Path(__file__).resolve().parents[1] / "backend" / "data" / "courses.json"
 SEMESTER_START = "2026-09-07"
 
@@ -53,7 +56,14 @@ def convert(source: Path) -> dict:
 
 
 def main() -> None:
-    source = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SOURCE
+    arg = sys.argv[1] if len(sys.argv) > 1 else os.getenv("TIMETABLE_JSON")
+    if not arg:
+        raise SystemExit(
+            "缺少源文件。用法：uv run python tools/build_courses.py <课表 JSON 路径>\n"
+            "或设置环境变量 TIMETABLE_JSON。\n"
+            "（源文件是个人课表导出，不随仓库分发）"
+        )
+    source = Path(arg)
     if not source.exists():
         raise SystemExit(f"源文件不存在：{source}")
 

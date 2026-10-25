@@ -67,8 +67,18 @@ def _slot_text(c: dict) -> str:
 
 
 def week_view(d: date) -> dict:
-    """给定日期，返回该周的课表。"""
+    """给定日期，返回该周的课表。早于开学日期时返回空视图并标记。"""
     wn = week_no(d)
+    if wn < 1:
+        return {
+            "week_no": wn,
+            "monday": _semester_start().isoformat(),
+            "days": [],
+            "course_count": 0,
+            "upcoming": upcoming_assignments(d),
+            "before_semester": True,
+        }
+
     monday = week_monday(d)
     courses = load_courses()
 
@@ -103,4 +113,5 @@ def week_view(d: date) -> dict:
         "days": days,
         "course_count": sum(len(x["courses"]) for x in days),
         "upcoming": upcoming_assignments(d),
+        "before_semester": False,
     }
