@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# 环境变量（API key 等）
+.env
+.env.*
+
+# 本地数据与库
+chroma_data/
+backend/samples/*.pdf
+
+# 个人与报名信息（含 UID、姓名、学校、手机号，绝不进公开仓库）
+local/
+
+# 前端
+node_modules/
+dist/
+.vite/
+
+# 系统
+Thumbs.db
+.DS_Store
+
+# 录音录像临时文件
+*.mp4
+*.mov
