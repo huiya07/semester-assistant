@@ -27,16 +27,18 @@ st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 
 
 def show_citation(c, title_prefix: str) -> None:
-    """出处卡片：原文片段 + 该页原图。"""
+    """出处卡片：默认收起；展开先看到检索片段，再点开关才渲染原页图像。"""
     with st.expander(f"{title_prefix} · 《{c['doc_name']}》第 {c['page_no']} 页"):
         st.caption("检索到的原文片段")
         st.write(c["text"])
-        png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
-        if png:
-            st.caption("↓ 原页")
-            st.image(png, width="stretch")
-        else:
-            st.caption("（原件不在本地，无法显示原页）")
+
+        toggle_key = f"page_{c.get('doc_id', '')}_{c['page_no']}_{c['index']}"
+        if st.toggle("🔍 查看该页原貌", key=toggle_key):
+            png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
+            if png:
+                st.image(png, width="stretch")
+            else:
+                st.caption("（原件不在本地，无法显示原页）")
 
 
 @st.cache_resource(show_spinner="正在加载嵌入模型…")
@@ -121,6 +123,7 @@ with tab_ask:
                 "citations": [
                     {
                         "index": c.index,
+                        "doc_id": c.doc_id,
                         "doc_name": c.doc_name,
                         "page_no": c.page_no,
                         "text": c.text,
@@ -131,6 +134,7 @@ with tab_ask:
                 "related": [
                     {
                         "index": c.index,
+                        "doc_id": c.doc_id,
                         "doc_name": c.doc_name,
                         "page_no": c.page_no,
                         "text": c.text,
