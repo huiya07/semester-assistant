@@ -36,7 +36,6 @@ def show_citation(c, title_prefix: str) -> None:
     4. 若文档不止一页，再给一个「展开全部 M 页」的开关
     """
     total = page_count(Path(c["pdf_file"])) if c.get("pdf_file") else 0
-    page_hint = f" · 第 {c['page_no']} 页 / 共 {total} 页" if total else ""
 
     with st.expander(f"{title_prefix} · 《{c['doc_name']}》第 {c['page_no']} 页"):
         if total > 1:
@@ -47,25 +46,45 @@ def show_citation(c, title_prefix: str) -> None:
         st.caption("🎯 你问到的部分")
         st.info(c["text"])
 
-        toggle_key = f"page_{c.get('doc_id', '')}_{c['page_no']}_{c['index']}"
-        if st.toggle(f"🔍 查看第 {c['page_no']} 页原貌{page_hint}", key=toggle_key):
-            png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
+        pdf = Path(c["pdf_file"]) if c.get("pdf_file") else None
+        base_key = f"scope_{c.get('doc_id', '')}_{c['index']}"
+
+        if total <= 1:
+            if st.toggle("🔍 查看原页", key=base_key + "_one"):
+                png = render_page(pdf, c["page_no"]) if pdf else None
+                if png:
+                    st.image(png, width="stretch")
+                else:
+                    st.caption("（原件不在本地）")
+            return
+
+        # 多页文档：一个控件决定范围，避免「单页」和「全部」各渲染一次
+        scope = st.radio(
+            "原页显示范围",
+            options=["不展开", f"仅第 {c['page_no']} 页", f"全部 {total} 页"],
+            horizontal=True,
+            key=base_key + "_radio",
+            label_visibility="collapsed",
+        )
+        if scope == "不展开":
+            return
+        if scope.startswith("仅"):
+            pages = [c["page_no"]]
+        else:
+            if total > 20:
+                st.caption(f"共 {total} 页，页数较多，只展开前 20 页")
+                pages = list(range(1, 21))
+            else:
+                pages = list(range(1, total + 1))
+
+        for p in pages:
+            png = render_page(pdf, p) if pdf else None
             if png:
+                if len(pages) > 1:
+                    st.caption(f"第 {p} 页")
                 st.image(png, width="stretch")
             else:
-                st.caption("（原件不在本地，无法显示原页）")
-
-        if total > 1:
-            if total <= 20:
-                all_key = f"allpages_{c.get('doc_id', '')}_{c['index']}"
-                if st.toggle(f"📄 展开全部 {total} 页", key=all_key):
-                    for p in range(1, total + 1):
-                        png = render_page(Path(c["pdf_file"]), p)
-                        if png:
-                            st.caption(f"第 {p} 页")
-                            st.image(png, width="stretch")
-            else:
-                st.caption(f"（共 {total} 页，页数较多，请用上面的开关逐页查看）")
+                st.caption(f"（第 {p} 页无法读取）")
 
 
 @st.cache_resource(show_spinner="正在加载嵌入模型…")
