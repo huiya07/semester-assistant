@@ -47,7 +47,9 @@ blockquote { margin: 8px 0; padding: 6px 12px; background: #fafafa; border-left:
              color: #555; }
 ul, ol { padding-left: 22px; }
 hr { border: none; border-top: 1px solid #ddd; margin: 18px 0; }
-img { max-width: 100%; }
+img { max-width: 100%; border: 1px solid #e0e0e0; border-radius: 4px;
+      margin: 8px 0 4px; page-break-inside: avoid; }
+p > img { display: block; }
 a { color: #1a5276; }
 """
 
