@@ -31,16 +31,27 @@ st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 st.markdown(
     """
     <style>
+    /* 弹窗：垂直居中 + 柔和的入场 */
     div[data-testid="stDialog"] {
         align-items: center !important;
         padding-top: 0 !important;
     }
     div[data-testid="stDialog"] > div {
-        animation: sa-dialog-in 0.18s ease-out both;
+        animation: sa-dialog-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     @keyframes sa-dialog-in {
-        from { opacity: 0; transform: translateY(10px) scale(0.98); }
-        to   { opacity: 1; transform: none; }
+        from { opacity: 0; transform: translateY(14px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* 提示条：覆盖默认的线性滑入，改成带减速的缓动 */
+    div[data-testid="stToast"] {
+        border-radius: 10px !important;
+        animation: sa-toast-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+    }
+    @keyframes sa-toast-in {
+        from { opacity: 0; transform: translateY(14px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
     }
     </style>
     """,
