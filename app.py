@@ -143,7 +143,19 @@ with st.sidebar:
     st.title("📚 学期助手")
     st.caption("资料问答 · 每条结论都带页码出处")
 
-    up = st.file_uploader("添加资料（PDF）", type=["pdf"])
+    # 上传框的 key 带自增计数器：入库成功后换一个新 key，
+    # 相当于重置控件，用户不用手动点 × 清空
+    if "upload_round" not in st.session_state:
+        st.session_state.upload_round = 0
+
+    if msg := st.session_state.pop("ingest_msg", None):
+        st.success(msg)
+    if err := st.session_state.pop("ingest_err", None):
+        st.error(err)
+
+    up = st.file_uploader(
+        "添加资料（PDF）", type=["pdf"], key=f"pdf_upload_{st.session_state.upload_round}"
+    )
     if up is not None and st.button("加入资料库", type="primary", use_container_width=True):
         with st.spinner("解析并建立索引…"):
             # 用独立临时目录并保留原文件名：doc_name 取自文件名，
@@ -154,16 +166,22 @@ with st.sidebar:
                 tmp.write_bytes(up.getbuffer())
                 doc = parse_pdf(tmp)
             except NoTextLayerError as e:
-                st.error(str(e))
+                st.session_state["ingest_err"] = str(e)
             except Exception as e:  # 损坏文件、0 字节、伪装成 pdf 的其它格式
-                st.error(f"无法解析 {up.name}：{type(e).__name__}。请确认是完整的 PDF 文件。")
+                st.session_state["ingest_err"] = (
+                    f"无法解析 {up.name}：{type(e).__name__}。请确认是完整的 PDF 文件。"
+                )
             else:
                 store.delete_doc(doc.doc_id)
                 pdf_file = store.store_pdf(tmp, doc.doc_id)
                 n = store.upsert(chunk_doc(doc), pdf_file=pdf_file)
-                st.success(f"已入库：{doc.filename}\n\n{doc.page_count} 页 · {n} 个片段")
+                st.session_state["ingest_msg"] = (
+                    f"已入库：{doc.filename}\n\n{doc.page_count} 页 · {n} 个片段"
+                )
+                st.session_state.upload_round += 1  # 换 key，上传框自动清空
             finally:
                 shutil.rmtree(tmpdir, ignore_errors=True)
+        st.rerun()
 
     st.divider()
     docs = store.docs()

@@ -8,8 +8,9 @@ __pycache__/
 .env.*
 !.env.example
 
-# 本地数据与库
+# 本地数据与库（chroma_data.bak 等临时备份也一并排除）
 chroma_data/
+chroma_data*
 backend/data/pdfs/
 backend/samples/*.pdf
 # 但示例讲义要随仓库分发：干净克隆后能立刻跑通全流程
