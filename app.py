@@ -172,12 +172,21 @@ with tab_ask:
         st.session_state.history = []
 
     if not st.session_state.history:
-        st.markdown("#### 试试问：")
-        st.markdown(
-            "- 习题 1.1 有哪些题目\n"
-            "- How many attention heads does the base model use?\n"
-            "- 这份资料里没有的内容（看它会不会老实说找不到）"
-        )
+        if store.count() == 0:
+            st.markdown("#### 先加一份资料")
+            st.markdown(
+                "左侧 **添加资料** 上传任意带文本层的 PDF，然后点「加入资料库」。\n\n"
+                "仓库自带一份示例讲义，可以直接用：\n\n"
+                "```text\nbackend/samples/sample-lecture-notes.pdf\n```"
+            )
+        else:
+            first_doc = store.docs()[0]["doc_name"]
+            st.markdown("#### 试试问：")
+            st.markdown(
+                f"- 这份资料讲了什么？\n"
+                f"- 《{first_doc}》的第 1 页说了什么？\n"
+                f"- 这份资料里没有的内容（看它会不会老实说找不到）"
+            )
 
     for mi, item in enumerate(st.session_state.history):
         with st.chat_message("user"):
