@@ -26,6 +26,17 @@ def _open_page(pdf_path: Path, page_no: int):
     return doc, doc[page_no - 1]
 
 
+def page_count(pdf_path: Path) -> int:
+    """文档总页数；文件缺失时返回 0。"""
+    try:
+        if not Path(pdf_path).exists():
+            return 0
+        with fitz.open(pdf_path) as doc:
+            return doc.page_count
+    except Exception:
+        return 0
+
+
 def page_text(pdf_path: Path, page_no: int) -> str | None:
     """取该页的完整文本（用于「整页展示 + 标出你问到的部分」）。"""
     try:

@@ -19,7 +19,7 @@ import streamlit as st
 from backend.app.chunker import chunk_doc
 from backend.app.parser import NoTextLayerError, parse_pdf
 from backend.app.qa import answer
-from backend.app.render import page_text, render_page, split_by_excerpt
+from backend.app.render import page_count, render_page
 from backend.app.semester import week_view
 from backend.app.store import Store
 
@@ -29,35 +29,43 @@ st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 def show_citation(c, title_prefix: str) -> None:
     """出处卡片：默认收起。
 
-    展开后分三层：
-    1. 你问到的部分（检索命中的片段，蓝色块标出）
-    2. 该页完整文本（可滚动），方便看上下文，避免「只给半段」
-    3. 开关：渲染该页原貌图像
+    展开后：
+    1. 提示「当前只展示第 N 页 / 共 M 页」，避免误以为这就是全部
+    2. 你问到的片段
+    3. 开关：渲染该页原貌
+    4. 若文档不止一页，再给一个「展开全部 M 页」的开关
     """
+    total = page_count(Path(c["pdf_file"])) if c.get("pdf_file") else 0
+    page_hint = f" · 第 {c['page_no']} 页 / 共 {total} 页" if total else ""
+
     with st.expander(f"{title_prefix} · 《{c['doc_name']}》第 {c['page_no']} 页"):
-        pdf = Path(c["pdf_file"]) if c.get("pdf_file") else None
-        full = page_text(pdf, c["page_no"]) if pdf else None
-        parts = split_by_excerpt(full, c["text"]) if full else None
+        if total > 1:
+            st.caption(
+                f"⚠ 本文档共 {total} 页，下面是**第 {c['page_no']} 页**，不是全文。"
+            )
 
-        if parts and parts[1].strip():
-            st.caption("🎯 你问到的部分")
-            st.info(parts[1])
-        else:
-            st.caption("🎯 检索命中的片段")
-            st.info(c["text"])
-
-        if full and len(full) > len(c["text"]) + 40:
-            st.caption(f"第 {c['page_no']} 页全文（共 {len(full)} 字，可滚动）")
-            with st.container(height=260):
-                st.text(full)
+        st.caption("🎯 你问到的部分")
+        st.info(c["text"])
 
         toggle_key = f"page_{c.get('doc_id', '')}_{c['page_no']}_{c['index']}"
-        if st.toggle("🔍 查看该页原貌", key=toggle_key):
-            png = render_page(pdf, c["page_no"]) if pdf else None
+        if st.toggle(f"🔍 查看第 {c['page_no']} 页原貌{page_hint}", key=toggle_key):
+            png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
             if png:
                 st.image(png, width="stretch")
             else:
                 st.caption("（原件不在本地，无法显示原页）")
+
+        if total > 1:
+            if total <= 20:
+                all_key = f"allpages_{c.get('doc_id', '')}_{c['index']}"
+                if st.toggle(f"📄 展开全部 {total} 页", key=all_key):
+                    for p in range(1, total + 1):
+                        png = render_page(Path(c["pdf_file"]), p)
+                        if png:
+                            st.caption(f"第 {p} 页")
+                            st.image(png, width="stretch")
+            else:
+                st.caption(f"（共 {total} 页，页数较多，请用上面的开关逐页查看）")
 
 
 @st.cache_resource(show_spinner="正在加载嵌入模型…")
