@@ -38,7 +38,11 @@ def page_count(pdf_path: Path) -> int:
 
 
 def page_text(pdf_path: Path, page_no: int) -> str | None:
-    """取该页的完整文本（用于「整页展示 + 标出你问到的部分」）。"""
+    """取该页的完整文本。
+
+    注意：当前界面没有使用它（出处展示改为「片段 + 原页图像」），
+    保留供后续做「整页文本 + 高亮命中」时使用；若长期无引用可删除。
+    """
     try:
         doc, page = _open_page(pdf_path, page_no)
         if doc is None:

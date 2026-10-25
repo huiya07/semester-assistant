@@ -76,8 +76,10 @@ def show_citation(c, title_prefix: str, key_prefix: str) -> None:
             pages = [c["page_no"]]
         else:
             if total > 20:
-                st.caption(f"共 {total} 页，页数较多，只展开前 20 页")
+                st.caption(f"共 {total} 页，页数较多，只展开前 20 页 + 当前页")
                 pages = list(range(1, 21))
+                if c["page_no"] not in pages:
+                    pages.append(c["page_no"])  # 命中的页必须在里面
             else:
                 pages = list(range(1, total + 1))
 
@@ -115,6 +117,8 @@ with st.sidebar:
                 doc = parse_pdf(tmp)
             except NoTextLayerError as e:
                 st.error(str(e))
+            except Exception as e:  # 损坏文件、0 字节、伪装成 pdf 的其它格式
+                st.error(f"无法解析 {up.name}：{type(e).__name__}。请确认是完整的 PDF 文件。")
             else:
                 store.delete_doc(doc.doc_id)
                 pdf_file = store.store_pdf(tmp, doc.doc_id)
@@ -138,6 +142,10 @@ with st.expander(
     expanded=not settings_now.ready,
 ):
     st.caption("支持任何 OpenAI 兼容端点。保存后写入 `local/settings.json`，不进仓库。")
+
+    if cfg_msg := st.session_state.pop("cfg_msg", None):
+        (st.success if cfg_msg[0] == "success" else st.info)(cfg_msg[1])
+
     with st.form("llm_settings"):
         base_url = st.text_input("API Base URL", value=settings_now.base_url)
         api_key = st.text_input(
@@ -145,6 +153,7 @@ with st.expander(
             value="",
             type="password",
             placeholder="已配置，留空表示不改" if settings_now.ready else "sk-...",
+            key="cfg_api_key",
         )
         model = st.text_input("模型名", value=settings_now.model)
         col_save, col_clear = st.columns(2)
@@ -157,13 +166,14 @@ with st.expander(
             st.error("API Key 不能为空。")
         else:
             save_settings(LLMSettings(base_url.strip(), new_key, model.strip()))
-            st.success("已保存，下一条消息生效。")
+            st.session_state["cfg_msg"] = ("success", "已保存，下一条消息生效。")
             st.rerun()
     if cleared:
         from backend.app.settings import clear as clear_settings
 
         clear_settings()
-        st.info("已清除界面配置，回退到 .env。")
+        st.session_state.pop("cfg_api_key", None)
+        st.session_state["cfg_msg"] = ("info", "已清除界面配置，回退到 .env。")
         st.rerun()
 
 # ---------------- 主区 ----------------
@@ -253,8 +263,22 @@ with tab_ask:
 
 with tab_week:
     st.caption("示例数据 · 可在下方导入自己的课表与作业")
-    view = week_view(date.today())
-    if view.get("before_semester"):
+    view = None
+    try:
+        view = week_view(date.today())
+    except Exception as e:  # 数据异常不能把整页打挂，且必须留一条恢复出路
+        st.error(f"课表数据有误：{type(e).__name__}: {e}")
+        from backend.app.semester import USER_DATA_DIR as _UD, reload_data as _reload
+
+        if st.button("⚠ 恢复默认数据（删除已导入）"):
+            for p in (_UD / "courses.json", _UD / "assignments.json"):
+                p.unlink(missing_ok=True)
+            _reload()
+            st.rerun()
+
+    if view is None:
+        pass
+    elif view.get("before_semester"):
         st.info(f"学期还没开始（开学日 {view['monday']}）。")
     else:
         st.subheader(f"第 {view['week_no']} 周 · {view['monday']} 起")
@@ -274,7 +298,9 @@ with tab_week:
                     st.markdown(f":red[⚠ {a['course']}]")
                     st.caption(a["title"])
 
-    if view["upcoming"]:
+    if view is None:
+        pass
+    elif view["upcoming"]:
         st.divider()
         st.markdown("**接下来两周要交**")
         for a in view["upcoming"]:
@@ -286,7 +312,14 @@ with tab_week:
     # ---- 导入 / 管理 ----
     st.divider()
     with st.expander("📥 导入 / 管理课表与作业"):
-        from backend.app.semester import USER_DATA_DIR, load_assignments, load_courses, reload_data
+        from backend.app.semester import (
+            USER_DATA_DIR,
+            load_assignments,
+            load_courses,
+            reload_data,
+            validate_assignments,
+            validate_courses,
+        )
 
         user_c = USER_DATA_DIR / "courses.json"
         user_a = USER_DATA_DIR / "assignments.json"
@@ -312,6 +345,12 @@ with tab_week:
                         data = {key: data}
                     if not isinstance(data, dict) or key not in data:
                         st.error(f"{f.name} 缺少 `{key}` 数组")
+                        continue
+                    ok, err = (
+                        validate_courses(data) if key == "courses" else validate_assignments(data)
+                    )
+                    if not ok:
+                        st.error(f"{f.name} 格式不对：{err}")
                         continue
                     USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
                     target.write_text(

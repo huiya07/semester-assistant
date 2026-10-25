@@ -25,6 +25,64 @@ def data_path(filename: str) -> Path:
     return user if user.exists() else DATA_DIR / filename
 
 
+COURSE_FIELDS = ("name", "day", "weeks")
+ASSIGNMENT_FIELDS = ("course", "title", "due_date")
+
+
+def validate_courses(data) -> tuple[bool, str]:
+    """导入前校验：宁可拒绝，也不要让坏数据把周视图搞崩。"""
+    items = data.get("courses") if isinstance(data, dict) else data
+    if not isinstance(items, list) or not items:
+        return False, "courses 必须是非空数组"
+    for i, c in enumerate(items, 1):
+        if not isinstance(c, dict):
+            return False, f"第 {i} 条不是对象"
+        missing = [f for f in COURSE_FIELDS if f not in c]
+        if missing:
+            return False, f"第 {i} 条缺少字段 {'、'.join(missing)}"
+        if not isinstance(c["weeks"], list):
+            return False, f"第 {i} 条的 weeks 必须是数组"
+    return True, ""
+
+
+def validate_assignments(data) -> tuple[bool, str]:
+    items = data.get("assignments") if isinstance(data, dict) else data
+    if not isinstance(items, list) or not items:
+        return False, "assignments 必须是非空数组"
+    for i, a in enumerate(items, 1):
+        if not isinstance(a, dict):
+            return False, f"第 {i} 条不是对象"
+        missing = [f for f in ASSIGNMENT_FIELDS if f not in a]
+        if missing:
+            return False, f"第 {i} 条缺少字段 {'、'.join(missing)}"
+    return True, ""
+
+
+def _safe_courses() -> list[dict]:
+    """读取时再过滤一遍：历史遗留的坏条目直接跳过，不让页面崩。"""
+    try:
+        items = json.loads(data_path("courses.json").read_text(encoding="utf-8"))["courses"]
+    except Exception:
+        return []
+    return [
+        c
+        for c in items
+        if isinstance(c, dict) and all(f in c for f in COURSE_FIELDS)
+    ]
+
+
+def _safe_assignments() -> list[dict]:
+    try:
+        items = json.loads(data_path("assignments.json").read_text(encoding="utf-8"))["assignments"]
+    except Exception:
+        return []
+    return [
+        a
+        for a in items
+        if isinstance(a, dict) and all(f in a for f in ASSIGNMENT_FIELDS)
+    ]
+
+
 def reload_data() -> None:
     """导入或恢复默认后清缓存，否则页面还读旧的。"""
     load_courses.cache_clear()
@@ -37,15 +95,13 @@ def _semester_start() -> date:
 
 @lru_cache(maxsize=1)
 def load_courses() -> list[dict]:
-    data = json.loads(data_path("courses.json").read_text(encoding="utf-8"))
-    return data["courses"]
+    return _safe_courses()
 
 
 @lru_cache(maxsize=1)
 def load_assignments() -> list[dict]:
     """作业是一次性事件（带截止日期），不是每周固定条目。"""
-    data = json.loads(data_path("assignments.json").read_text(encoding="utf-8"))
-    return data["assignments"]
+    return _safe_assignments()
 
 
 def assignments_due_on(d: date) -> list[dict]:
