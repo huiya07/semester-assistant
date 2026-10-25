@@ -58,6 +58,7 @@ class Store:
             metadatas=[
                 {
                     "doc_id": c.doc_id,
+                    "doc_name": c.doc_name,
                     "page_no": c.page_no,
                     "ordinal": c.ordinal,
                 }
@@ -95,11 +96,12 @@ class Store:
 
     def docs(self) -> list[dict]:
         """返回库里已有哪些文档（去重）。"""
-        total = self.count()
-        if total == 0:
+        if self.count() == 0:
             return []
         res = self.col.get(include=["metadatas"])
-        seen: dict[str, int] = {}
+        seen: dict[str, dict] = {}
         for m in res["metadatas"]:
-            seen[m["doc_id"]] = seen.get(m["doc_id"], 0) + 1
-        return [{"doc_id": k, "chunks": v} for k, v in seen.items()]
+            did = m["doc_id"]
+            item = seen.setdefault(did, {"doc_id": did, "doc_name": m.get("doc_name", did), "chunks": 0})
+            item["chunks"] += 1
+        return sorted(seen.values(), key=lambda x: x["doc_name"])

@@ -17,6 +17,7 @@ from .parser import ParsedDoc
 class Chunk:
     chunk_id: str
     doc_id: str
+    doc_name: str
     page_no: int
     ordinal: int  # 在本页内的序号，从 0 开始
     text: str
@@ -80,6 +81,7 @@ def chunk_doc(doc: ParsedDoc, size: int = 600, overlap: int = 80) -> list[Chunk]
                 Chunk(
                     chunk_id=f"{doc.doc_id}-p{page.page_no}-{ordinal:03d}",
                     doc_id=doc.doc_id,
+                    doc_name=doc.filename,
                     page_no=page.page_no,
                     ordinal=ordinal,
                     text=piece,

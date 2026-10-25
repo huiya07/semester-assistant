@@ -107,7 +107,7 @@ def cmd_stats() -> None:
     store = Store()
     print(f"库内总切片：{store.count()}")
     for d in store.docs():
-        print(f"  {d['doc_id']}  {d['chunks']} 片")
+        print(f"  {d['doc_name']}  [{d['doc_id']}]  {d['chunks']} 片")
 
 
 def cmd_ask(question: str) -> None:
