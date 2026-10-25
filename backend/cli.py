@@ -21,12 +21,23 @@ def cmd_week(arg: str | None = None) -> None:
     for day in view["days"]:
         mark = " ← 今天" if day["is_today"] else ""
         head = f"{day['weekday']} {day['date']}{mark}"
-        if not day["courses"]:
+        if not day["courses"] and not day["due"]:
             print(f"{head}    无课")
             continue
         print(head)
         for c in day["courses"]:
             print(f"    {c['slot']:<16} {c['name']}")
+        for a in day["due"]:
+            print(f"    {'⚠ 作业截止':<14} {a['course']} · {a['title']}")
+
+    if view["upcoming"]:
+        print("-" * 46)
+        print("接下来两周要交：")
+        for a in view["upcoming"]:
+            print(f"  {a['due_date']}  {a['course']} · {a['title']}")
+    else:
+        print("-" * 46)
+        print("接下来两周没有到期作业。")
 
 
 def main() -> None:

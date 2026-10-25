@@ -26,6 +26,28 @@ def load_courses() -> list[dict]:
     return data["courses"]
 
 
+@lru_cache(maxsize=1)
+def load_assignments() -> list[dict]:
+    """作业是一次性事件（带截止日期），不是每周固定条目。"""
+    path = DATA_DIR / "assignments.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data["assignments"]
+
+
+def assignments_due_on(d: date) -> list[dict]:
+    return [a for a in load_assignments() if a["due_date"] == d.isoformat()]
+
+
+def upcoming_assignments(d: date, within_days: int = 14) -> list[dict]:
+    """从 d 起（含）未来 within_days 天内到期的作业，按日期升序。"""
+    end = (d + timedelta(days=within_days)).isoformat()
+    start = d.isoformat()
+    return sorted(
+        (a for a in load_assignments() if start <= a["due_date"] <= end),
+        key=lambda a: a["due_date"],
+    )
+
+
 def week_no(d: date) -> int:
     """返回 d 所在的教学周。早于开学日期时返回 0 或负数。"""
     return (d - _semester_start()).days // 7 + 1
@@ -71,6 +93,7 @@ def week_view(d: date) -> dict:
                 "weekday": WEEKDAY_NAMES[i],
                 "is_today": cur == d,
                 "courses": todays,
+                "due": assignments_due_on(cur),
             }
         )
 
@@ -79,4 +102,5 @@ def week_view(d: date) -> dict:
         "monday": monday.isoformat(),
         "days": days,
         "course_count": sum(len(x["courses"]) for x in days),
+        "upcoming": upcoming_assignments(d),
     }
