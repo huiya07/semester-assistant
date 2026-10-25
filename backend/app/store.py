@@ -87,6 +87,12 @@ class Store:
         """删除某篇文档的全部切片。切片参数变了要重入库时用。"""
         self.col.delete(where={"doc_id": doc_id})
 
+    def purge_document(self, doc_id: str) -> None:
+        """彻底删除一篇文档：向量切片 + 留底的原件。"""
+        self.delete_doc(doc_id)
+        leftover = PDF_STORE_DIR / f"{doc_id}.pdf"
+        leftover.unlink(missing_ok=True)
+
     # --- 读 ---
     def search(self, query: str, top_k: int = 5) -> list[Hit]:
         if not query.strip() or self.count() == 0:

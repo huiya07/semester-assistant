@@ -131,7 +131,14 @@ with st.sidebar:
     docs = store.docs()
     st.caption(f"资料库：{len(docs)} 篇 / {store.count()} 个片段")
     for d in docs:
-        st.caption(f"· {d['doc_name']}（{d['chunks']} 片）")
+        col_name, col_del = st.columns([5, 1], vertical_alignment="center")
+        col_name.caption(f"· {d['doc_name']}（{d['chunks']} 片）")
+        if col_del.button(
+            "🗑", key=f"del_{d['doc_id']}", help=f"删除《{d['doc_name']}》"
+        ):
+            store.purge_document(d["doc_id"])
+            st.session_state.pop("history", None)  # 旧引用指向已删文档，一并清掉
+            st.rerun()
     if not docs:
         st.caption("还是空的，先传一份 PDF。")
 
