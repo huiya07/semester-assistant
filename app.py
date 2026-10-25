@@ -71,6 +71,22 @@ def confirm_delete(doc_id: str, doc_name: str, chunks: int) -> None:
         st.rerun()
 
 
+@st.dialog("确认恢复默认")
+def confirm_reset_data() -> None:
+    from backend.app.semester import USER_DATA_DIR as _UD, reload_data as _reload
+
+    st.markdown("要用仓库自带的**示例数据**替换当前课表与作业吗？")
+    st.caption("已导入的自定义课表与作业会被删除，无法撤销。")
+    col_yes, col_no = st.columns(2)
+    if col_yes.button("确认恢复", type="primary", use_container_width=True):
+        for p in (_UD / "courses.json", _UD / "assignments.json"):
+            p.unlink(missing_ok=True)
+        _reload()
+        st.rerun()
+    if col_no.button("取消", use_container_width=True):
+        st.rerun()
+
+
 def show_citation(c, title_prefix: str, key_prefix: str) -> None:
     """出处卡片：默认收起。
 
@@ -446,8 +462,4 @@ with tab_week:
 
         if user_c.exists() or user_a.exists():
             if st.button("恢复默认（删除已导入的数据）"):
-                for p in (user_c, user_a):
-                    p.unlink(missing_ok=True)
-                reload_data()
-                st.success("已恢复为仓库自带的示例数据")
-                st.rerun()
+                confirm_reset_data()
