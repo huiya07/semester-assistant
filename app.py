@@ -26,14 +26,16 @@ from backend.app.store import Store
 st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 
 
-def show_citation(c, title_prefix: str) -> None:
+def show_citation(c, title_prefix: str, key_prefix: str) -> None:
     """出处卡片：默认收起。
 
     展开后：
-    1. 提示「当前只展示第 N 页 / 共 M 页」，避免误以为这就是全部
+    1. 多页文档提示「当前只展示第 N 页 / 共 M 页」，避免误以为这就是全部
     2. 你问到的片段
-    3. 开关：渲染该页原貌
-    4. 若文档不止一页，再给一个「展开全部 M 页」的开关
+    3. 一个控件选原页显示范围（不展开 / 仅该页 / 全部页）
+
+    key_prefix 必须在整页内唯一（用「消息序号 + 卡片类型」），
+    否则 citations 与 related、或不同消息之间会撞 key。
     """
     total = page_count(Path(c["pdf_file"])) if c.get("pdf_file") else 0
 
@@ -47,7 +49,7 @@ def show_citation(c, title_prefix: str) -> None:
         st.info(c["text"])
 
         pdf = Path(c["pdf_file"]) if c.get("pdf_file") else None
-        base_key = f"scope_{c.get('doc_id', '')}_{c['index']}"
+        base_key = f"{key_prefix}_{c['page_no']}_{c['index']}"
 
         if total <= 1:
             if st.toggle("🔍 查看原页", key=base_key + "_one"):
@@ -142,7 +144,7 @@ with tab_ask:
             "- 这份资料里没有的内容（看它会不会老实说找不到）"
         )
 
-    for item in st.session_state.history:
+    for mi, item in enumerate(st.session_state.history):
         with st.chat_message("user"):
             st.markdown(item["q"])
         with st.chat_message("assistant", avatar="⚠️" if item["status"] == "error" else None):
@@ -153,9 +155,9 @@ with tab_ask:
             if item["status"] == "not_found" and item.get("searched"):
                 st.caption("🔍 " + item["searched"])
             for c in item["citations"]:
-                show_citation(c, f"📄 出处 [{c['index']}]")
+                show_citation(c, f"📄 出处 [{c['index']}]", f"m{mi}_cite")
             for c in item.get("related", []):
-                show_citation(c, "📄 最接近的内容")
+                show_citation(c, "📄 最接近的内容", f"m{mi}_rel")
 
     q = st.chat_input("问点什么…")
     if q:
