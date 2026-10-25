@@ -149,7 +149,8 @@ with st.sidebar:
         st.session_state.upload_round = 0
 
     if msg := st.session_state.pop("ingest_msg", None):
-        st.success(msg)
+        # 用 toast 而不是 st.success：静态提示会一直挂在那里，toast 几秒后自己消失
+        st.toast(msg.replace("\n\n", " · "), icon="✅")
     if err := st.session_state.pop("ingest_err", None):
         st.error(err)
 
