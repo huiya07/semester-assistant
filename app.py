@@ -28,6 +28,19 @@ from backend.app.store import Store
 st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
 
 
+@st.dialog("确认删除")
+def confirm_delete(doc_id: str, doc_name: str, chunks: int) -> None:
+    st.markdown(f"要删除 **《{doc_name}》** 吗？")
+    st.caption(f"将删除 {chunks} 个检索片段与留底的原件，并清空当前对话。此操作无法撤销。")
+    col_yes, col_no = st.columns(2)
+    if col_yes.button("确认删除", type="primary", use_container_width=True):
+        get_store().purge_document(doc_id)
+        st.session_state.pop("history", None)
+        st.rerun()
+    if col_no.button("取消", use_container_width=True):
+        st.rerun()
+
+
 def show_citation(c, title_prefix: str, key_prefix: str) -> None:
     """出处卡片：默认收起。
 
@@ -136,9 +149,7 @@ with st.sidebar:
         if col_del.button(
             "🗑", key=f"del_{d['doc_id']}", help=f"删除《{d['doc_name']}》"
         ):
-            store.purge_document(d["doc_id"])
-            st.session_state.pop("history", None)  # 旧引用指向已删文档，一并清掉
-            st.rerun()
+            confirm_delete(d["doc_id"], d["doc_name"], d["chunks"])
     if not docs:
         st.caption("还是空的，先传一份 PDF。")
 
