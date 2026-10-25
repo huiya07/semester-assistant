@@ -1,0 +1,12 @@
+# Streamlit 运行配置
+# toolbarMode = "minimal" 会隐藏右上角的 Deploy 按钮和「Record a screencast」等推广入口，
+# 本地演示和录屏时界面更干净。
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
