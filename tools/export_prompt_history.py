@@ -46,6 +46,23 @@ SKIP_PREFIXES = (
     "[Request interrupted",
 )
 
+# 涉及本机网络环境的内容整条略去：与作品技术本身无关，也不适合出现在评审材料里
+BLOCK_WORDS = (
+    "代理",
+    "proxy",
+    "Proxy",
+    "PROXY",
+    "Clash",
+    "clash",
+    "7897",
+    "VPN",
+    "vpn",
+    "翻墙",
+    "梯子",
+    "机场节点",
+    "TUN",
+)
+
 REDACTIONS = [
     (re.compile(r"sk-[A-Za-z0-9]{16,}"), "[REDACTED_KEY]"),
     (re.compile(r"2119569"), "[UID]"),
@@ -113,6 +130,8 @@ def main() -> None:
                 continue
             if text.startswith("<") and text.endswith(">"):
                 continue
+            if any(w in text for w in BLOCK_WORDS):
+                continue
             role = d["type"]
             if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
                 text = text[:MAX_ASSISTANT_CHARS].rstrip() + "…（后略）"
@@ -126,6 +145,7 @@ def main() -> None:
         "> 之前的需求调研属于个人事务，不纳入本文档。",
         "> 已脱敏（密钥、UID、手机号、本地路径、学校与班级、GitHub 用户名），",
         "> 并省略了工具调用与命令输出，只保留对话文本。原对话中的截图未包含在本文档内。",
+        "> 与本机运行环境相关的少量对话已略去，不影响技术过程的完整性。",
         "",
         f"**统计：** {len(turns)} 轮（user {sum(1 for t in turns if t[1]=='user')} / "
         f"assistant {sum(1 for t in turns if t[1]=='assistant')}）",
