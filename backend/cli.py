@@ -5,6 +5,7 @@
     uv run python -m backend.cli parse <pdf路径>
     uv run python -m backend.cli index <pdf路径>
     uv run python -m backend.cli search <问题>
+    uv run python -m backend.cli ask <问题>
     uv run python -m backend.cli stats
 """
 
@@ -109,6 +110,24 @@ def cmd_stats() -> None:
         print(f"  {d['doc_id']}  {d['chunks']} 片")
 
 
+def cmd_ask(question: str) -> None:
+    from .app.qa import answer as ask
+
+    res = ask(question)
+    print(f"状态：{res.status}" + (f"  最佳距离：{res.best_distance:.4f}" if res.best_distance is not None else ""))
+    print("-" * 46)
+    print(res.text)
+    if res.citations:
+        print("-" * 46)
+        print("引用出处：")
+        for c in res.citations:
+            print(f"  [{c.index}] p{c.page_no}  {c.text[:90].replace(chr(10), ' ')}…")
+    if res.searched:
+        print("-" * 46)
+        for s in res.searched:
+            print(f"  {s}")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if not args or args[0] == "week":
@@ -119,6 +138,8 @@ def main() -> None:
         cmd_index(args[1])
     elif args[0] == "search" and len(args) > 1:
         cmd_search(" ".join(args[1:]))
+    elif args[0] == "ask" and len(args) > 1:
+        cmd_ask(" ".join(args[1:]))
     elif args[0] == "stats":
         cmd_stats()
     else:
