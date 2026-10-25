@@ -38,6 +38,8 @@
 - **报名信息（UID、姓名、学校、手机号）在 `local/提交信息.md`，该目录已被 `.gitignore` 排除，绝不提交公开仓库，文档里也不要写具体号码**
 - 网盘账号、B 站账号已就绪
 - Python 用 `uv`；venv 与 torch 依赖放 **D 盘**，不占 C 盘
+- **改 `backend/` 下的代码后必须重启 Streamlit 进程**：它的热重载只重跑 `app.py`，不会重新 import 后端模块，
+  否则会出现「类已更新但进程里还是旧类」的 AttributeError（2026-10-25 实际踩过）
 - 所有脚本用 `pwsh` 执行
 - 本地运行，不部署公网
 - DeepSeek key 放 `.env`，仓库 Public，`.env` 永不提交
