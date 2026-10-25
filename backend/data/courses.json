@@ -1,0 +1,671 @@
+{
+  "_meta": {
+    "semester_start": "2026-09-07",
+    "note": "由个人课表转换，已去除教师姓名与教室，不含任何个人信息",
+    "count": 43
+  },
+  "courses": [
+    {
+      "name": "专业认识实习",
+      "day": 1,
+      "start_section": 1,
+      "end_section": 10,
+      "weeks": [
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "形策",
+      "day": 1,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        17,
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "德法",
+      "day": 1,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "德法",
+      "day": 1,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "数据库技术",
+      "day": 1,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "数据库技术",
+      "day": 1,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "IT英语（一）",
+      "day": 1,
+      "start_section": 7,
+      "end_section": 8,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "IT英语（一）",
+      "day": 1,
+      "start_section": 7,
+      "end_section": 8,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "晚自习",
+      "day": 1,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "专业认识实习",
+      "day": 2,
+      "start_section": 1,
+      "end_section": 10,
+      "weeks": [
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "程序设计基础",
+      "day": 2,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "程序设计基础",
+      "day": 2,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "大学生心理健康",
+      "day": 2,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能应用与信息技术",
+      "day": 2,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能应用与信息技术",
+      "day": 2,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "大学生职业发展与就业指导",
+      "day": 2,
+      "start_section": 9,
+      "end_section": 10,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "大学生职业发展与就业指导",
+      "day": 2,
+      "start_section": 9,
+      "end_section": 10,
+      "weeks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "晚自习",
+      "day": 2,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "Python 程序设计",
+      "day": 3,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "Python 程序设计",
+      "day": 3,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "专业认识实习",
+      "day": 3,
+      "start_section": 1,
+      "end_section": 10,
+      "weeks": [
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "体育",
+      "day": 3,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "体育",
+      "day": 3,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "美育",
+      "day": 3,
+      "start_section": 7,
+      "end_section": 8,
+      "weeks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "晚自习",
+      "day": 3,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        5
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "晚自习",
+      "day": 3,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "Python 程序设计",
+      "day": 4,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "Python 程序设计",
+      "day": 4,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "专业认识实习",
+      "day": 4,
+      "start_section": 1,
+      "end_section": 10,
+      "weeks": [
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能数学基础（一）",
+      "day": 4,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能数学基础（一）",
+      "day": 4,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "数据库技术",
+      "day": 4,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "数据库技术",
+      "day": 4,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "形策",
+      "day": 4,
+      "start_section": 7,
+      "end_section": 8,
+      "weeks": [
+        13,
+        14
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "晚自习",
+      "day": 4,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        5
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "晚自习",
+      "day": 4,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    },
+    {
+      "name": "专业认识实习",
+      "day": 5,
+      "start_section": 1,
+      "end_section": 10,
+      "weeks": [
+        18
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "程序设计基础",
+      "day": 5,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "程序设计基础",
+      "day": 5,
+      "start_section": 1,
+      "end_section": 2,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "国家安全教育",
+      "day": 5,
+      "start_section": 3,
+      "end_section": 4,
+      "weeks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能应用与信息技术",
+      "day": 5,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        6,
+        7,
+        8
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "人工智能应用与信息技术",
+      "day": 5,
+      "start_section": 5,
+      "end_section": 6,
+      "weeks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "name": "晚自习",
+      "day": 7,
+      "start_section": null,
+      "end_section": null,
+      "weeks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "start_time": "19:00",
+      "end_time": "20:30"
+    }
+  ]
+}
