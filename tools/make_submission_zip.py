@@ -32,7 +32,11 @@ NOTE = """学期助手（Semester Assistant）
   3. uv run streamlit run app.py
   浏览器打开 http://127.0.0.1:8501
 
-  首次运行会下载中文嵌入模型（约 100MB）和 PyTorch（整个 .venv 约 1GB）。
+  ★ 首次运行需要联网下载：Python 依赖约 1GB + 中文嵌入模型约 100MB。
+    嵌入模型已默认走国内镜像 hf-mirror.com，无需额外配置。
+    依赖下载慢可先设镜像：$env:UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+
+  也可以跳过改 .env：界面打开后直接在「⚙ 模型配置」里填 Key。
 
 【自带示例资料】
   backend/samples/sample-lecture-notes.pdf

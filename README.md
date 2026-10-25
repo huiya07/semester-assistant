@@ -44,15 +44,20 @@ uv run streamlit run app.py
 
 ### 首次运行会下载什么
 
-- `bge-small-zh-v1.5` 嵌入模型，约 100MB（缓存到 `~/.cache/huggingface`）
-- 依赖里的 PyTorch（Windows CPU 版），装完整个 `.venv` 约 1GB
+这一节很重要：程序本身不联网，但**首次运行需要从网上取两样东西**。
 
-首次启动加载模型需要 10–30 秒，界面会显示「正在加载嵌入模型…」。
+| 需要下载 | 大小 | 能否直连 | 说明 |
+|---|---|---|---|
+| Python 依赖（`uv sync`） | 约 1 GB | 通常可以，但慢 | 慢的话设镜像：`$env:UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"` |
+| 中文嵌入模型 `bge-small-zh-v1.5` | 约 100 MB | **不能直连** | 代码已默认走 `hf-mirror.com` 镜像，无需额外配置 |
+| DeepSeek API | — | 可以 | 需要自行申请 API Key |
 
-国内网络建议设置镜像：
+依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1 GB。首次启动加载模型需要 10–30 秒，界面会显示「正在加载嵌入模型…」。
+
+如果想让模型走官方源（海外网络），先设置环境变量再启动：
 
 ```powershell
-$env:HF_ENDPOINT = "https://hf-mirror.com"
+$env:HF_ENDPOINT = "https://huggingface.co"
 ```
 
 ### 准备资料

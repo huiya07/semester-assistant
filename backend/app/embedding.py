@@ -10,9 +10,14 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
-from sentence_transformers import SentenceTransformer
+# 必须在导入 sentence_transformers 之前设置。
+# 国内网络直连 HuggingFace 基本不通，默认走镜像；想用官方源可自行设置 HF_ENDPOINT。
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
+from sentence_transformers import SentenceTransformer  # noqa: E402
 
 MODEL_NAME = "BAAI/bge-small-zh-v1.5"
 MODEL_TAG = "bge_zh"  # 用于区分不同嵌入模型产生的向量
