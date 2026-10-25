@@ -83,6 +83,9 @@ with tab_ask:
             for c in item["citations"]:
                 with st.expander(f"📄 出处 [{c['index']}] · 第 {c['page_no']} 页"):
                     st.write(c["text"])
+            for c in item.get("related", []):
+                with st.expander(f"📄 最接近的内容 · 第 {c['page_no']} 页", expanded=False):
+                    st.write(c["text"])
 
     q = st.chat_input("问点什么…")
     if q:
@@ -96,6 +99,10 @@ with tab_ask:
                 "citations": [
                     {"index": c.index, "page_no": c.page_no, "text": c.text}
                     for c in res.citations
+                ],
+                "related": [
+                    {"index": c.index, "page_no": c.page_no, "text": c.text}
+                    for c in res.related
                 ],
                 "searched": "；".join(res.searched),
             }

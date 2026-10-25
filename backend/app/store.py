@@ -28,6 +28,7 @@ COLLECTION = f"chunks_{MODEL_TAG}_v1"
 class Hit:
     chunk_id: str
     doc_id: str
+    doc_name: str
     page_no: int
     text: str
     distance: float
@@ -84,6 +85,7 @@ class Store:
             Hit(
                 chunk_id=i,
                 doc_id=m["doc_id"],
+                doc_name=m.get("doc_name", m["doc_id"]),
                 page_no=m["page_no"],
                 text=d,
                 distance=float(dist),

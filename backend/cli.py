@@ -122,6 +122,11 @@ def cmd_ask(question: str) -> None:
         print("引用出处：")
         for c in res.citations:
             print(f"  [{c.index}] p{c.page_no}  {c.text[:90].replace(chr(10), ' ')}…")
+    if res.related:
+        print("-" * 46)
+        print("最接近的内容：")
+        for c in res.related:
+            print(f"  [{c.index}] p{c.page_no}  {c.text[:90].replace(chr(10), ' ')}…")
     if res.searched:
         print("-" * 46)
         for s in res.searched:

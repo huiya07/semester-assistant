@@ -47,6 +47,7 @@ class Answer:
     status: str  # "ok" | "not_found"
     text: str
     citations: list[Citation] = field(default_factory=list)
+    related: list[Citation] = field(default_factory=list)  # not_found 时最接近的内容
     searched: list[str] = field(default_factory=list)  # 已检索范围，用于告知用户
     best_distance: float | None = None
 
@@ -64,18 +65,77 @@ def _format_context(hits: list[Hit]) -> str:
 
 
 def _searched_desc(hits: list[Hit]) -> list[str]:
-    pages = sorted({h.page_no for h in hits})
-    return [f"已检索 {len(hits)} 个片段，覆盖第 {pages[0]}–{pages[-1]} 页" if pages else "未检索到任何片段"]
+    """按文档分组描述检索范围。不能把不同文档的页码混在一起说「第 1–10 页」。"""
+    if not hits:
+        return ["未检索到任何片段"]
+    grouped: dict[str, list[int]] = {}
+    for h in hits:
+        grouped.setdefault(h.doc_name or h.doc_id, []).append(h.page_no)
+    parts = []
+    for name, pages in grouped.items():
+        uniq = sorted(set(pages))
+        shown = "、".join(str(p) for p in uniq[:6])
+        more = f" 等 {len(uniq)} 页" if len(uniq) > 6 else " 页"
+        parts.append(f"《{name}》第 {shown}{more}")
+    return ["已检索：" + "；".join(parts)]
+
+
+def _to_citation(index: int, hit: Hit) -> Citation:
+    return Citation(
+        index=index,
+        chunk_id=hit.chunk_id,
+        doc_id=hit.doc_id,
+        page_no=hit.page_no,
+        text=hit.text,
+    )
 
 
 def _not_found(hits: list[Hit], best: float | None) -> Answer:
+    """区分「没检索到」和「找到了但不包含答案」，后者要告诉用户看到了什么。"""
+    if not hits or best is None:
+        return Answer(
+            status="not_found",
+            text="资料里没有检索到与这个问题相关的内容。",
+            searched=_searched_desc(hits),
+            best_distance=best,
+        )
+
+    if best > MAX_DISTANCE:
+        return Answer(
+            status="not_found",
+            text="资料里没有检索到与这个问题相关的内容。",
+            searched=_searched_desc(hits),
+            best_distance=best,
+        )
+
+    # 找到了相关片段，但模型认为里面没有答案 —— 把最接近的原文摆出来让用户自己判断
+    top = hits[0]
+    same_doc = [h for h in hits if h.doc_id == top.doc_id][:2]
+    related = [_to_citation(i, h) for i, h in enumerate(same_doc, 1)]
     return Answer(
         status="not_found",
-        text="资料里没有找到能回答这个问题的内容。",
-        citations=[],
+        text=(
+            f"检索到了《{top.doc_name}》第 {top.page_no} 页的相关内容，"
+            "但里面没有直接回答这个问题的信息。\n\n最接近的原文在下面，你可以自己判断。"
+        ),
+        related=related,
         searched=_searched_desc(hits),
         best_distance=best,
     )
+
+
+def _select_context(hits: list[Hit], max_other: int = 2) -> list[Hit]:
+    """同文档优先：最相关片段所在的资料，优先把它的其它片段喂给模型。
+
+    实测问题：问《习题1.1》时，8 个召回里有 7 个是英文论文的无关片段，
+    噪声会稀释上下文，模型更容易答偏或拒答。
+    """
+    if len(hits) <= 2:
+        return hits
+    top_doc = hits[0].doc_id
+    same = [h for h in hits if h.doc_id == top_doc]
+    others = [h for h in hits if h.doc_id != top_doc][:max_other]
+    return same + others
 
 
 def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
@@ -100,6 +160,9 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
     if best > MAX_DISTANCE:
         # 相关性太差，不调模型
         return _not_found(hits, best)
+
+    # 同文档优先，减少跨资料噪声；后面的编号都以筛选后的顺序为准
+    hits = _select_context(hits)
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -128,14 +191,7 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
         return _not_found(hits, best)
 
     citations = [
-        Citation(
-            index=i,
-            chunk_id=hits[i - 1].chunk_id,
-            doc_id=hits[i - 1].doc_id,
-            page_no=hits[i - 1].page_no,
-            text=hits[i - 1].text,
-        )
-        for i in sorted(valid)
+        _to_citation(i, hits[i - 1]) for i in sorted(valid)
     ]
 
     if not citations:
