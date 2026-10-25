@@ -4,15 +4,16 @@
 > 用户开场白通常是「读 PROGRESS.md，继续 Task N」。不要去重新调研比赛规则（摘要见 `docs/比赛要求摘要.md`），不要重新讨论已定决策（见 `docs/决策记录.md`）。
 
 **最后更新：** 2026-10-25
-**当前状态：** Task 1 完成；Task 7 的「周次 + 周视图」部分已提前完成并验证（第 7 周 17 节课）
+**当前状态：** Task 1 完成；Task 7 的「周次 + 周视图 + 作业到期」已完成并验证（第 7/8 周均跑通）
 **当前任务：** Task 2（PDF 解析与切片）——**10-27 前必须跑通**
 **下一步具体动作：** 写 `backend/app/parser.py` 的 `parse_pdf()`，用一份公开教材 PDF 验证逐页文本与页码
-**已完成的任务：** Task 1（骨架）、Task 7a（课表数据 + 周视图 CLI）
+**已完成的任务：** Task 1（骨架）、Task 7a（课表 + 作业 + 周视图 CLI）
 **已冻结的接口：**
 - `config.py`：`ROOT`、`DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`CHROMA_DIR`、`DATA_DIR`、`SEMESTER_START`、`require_api_key()`
 - `main.py`：`app`（FastAPI 实例），`GET /health` → `{status, llm_configured}`
-- `semester.py`：`load_courses()`、`week_no(d: date) -> int`、`week_monday(d: date) -> date`、`week_view(d: date) -> dict{week_no, monday, days[], course_count}`，每天每天 `{date, weekday, is_today, courses[{name, slot, start_section, end_section, start_time, end_time}]}`
-- `data/courses.json`：`{_meta{semester_start, note, count}, courses[{name, day, start_section, end_section, weeks[], start_time, end_time}]}`（已脱敏，无教师/教室）
+- `semester.py`：`load_courses()`、`load_assignments()`、`week_no(d)`、`week_monday(d)`、`assignments_due_on(d)`、`upcoming_assignments(d, within_days=14)`、`week_view(d) -> dict{week_no, monday, days[], course_count, upcoming[]}`，每天 `{date, weekday, is_today, courses[], due[]}`
+- `data/courses.json`：`{_meta, courses[{name, day, start_section, end_section, weeks[], start_time, end_time}]}`（已脱敏，无教师/教室）
+- `data/assignments.json`：`{_meta, assignments[{id, course, title, due_date}]}`（示例数据，课程名对应真实课表，内容虚构）
 - CLI：`uv run python -m backend.cli week [YYYY-MM-DD]`
 **已放弃：** 「第三章是哪周学的」——课表不含教学进度，数据不支持（见决策记录 D10 追加项）
 **阻塞项：** 无。**硬期限：2026-10-31 15:00 预指导提交**（源码网盘 + 介绍文档 + B 站视频）
