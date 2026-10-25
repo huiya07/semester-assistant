@@ -19,10 +19,24 @@ import streamlit as st
 from backend.app.chunker import chunk_doc
 from backend.app.parser import NoTextLayerError, parse_pdf
 from backend.app.qa import answer
+from backend.app.render import render_page
 from backend.app.semester import week_view
 from backend.app.store import Store
 
 st.set_page_config(page_title="学期助手", page_icon="📚", layout="wide")
+
+
+def show_citation(c, title_prefix: str) -> None:
+    """出处卡片：原文片段 + 该页原图。"""
+    with st.expander(f"{title_prefix} · 《{c['doc_name']}》第 {c['page_no']} 页"):
+        st.caption("检索到的原文片段")
+        st.write(c["text"])
+        png = render_page(Path(c["pdf_file"]), c["page_no"]) if c.get("pdf_file") else None
+        if png:
+            st.caption("↓ 原页")
+            st.image(png, width="stretch")
+        else:
+            st.caption("（原件不在本地，无法显示原页）")
 
 
 @st.cache_resource(show_spinner="正在加载嵌入模型…")
@@ -51,7 +65,8 @@ with st.sidebar:
                 st.error(str(e))
             else:
                 store.delete_doc(doc.doc_id)
-                n = store.upsert(chunk_doc(doc))
+                pdf_file = store.store_pdf(tmp, doc.doc_id)
+                n = store.upsert(chunk_doc(doc), pdf_file=pdf_file)
                 st.success(f"已入库：{doc.filename}\n\n{doc.page_count} 页 · {n} 个片段")
             finally:
                 shutil.rmtree(tmpdir, ignore_errors=True)
@@ -90,14 +105,9 @@ with tab_ask:
             if item["status"] == "not_found" and item.get("searched"):
                 st.caption("🔍 " + item["searched"])
             for c in item["citations"]:
-                with st.expander(f"📄 出处 [{c['index']}] · 《{c['doc_name']}》第 {c['page_no']} 页"):
-                    st.write(c["text"])
+                show_citation(c, f"📄 出处 [{c['index']}]")
             for c in item.get("related", []):
-                with st.expander(
-                    f"📄 最接近的内容 · 《{c['doc_name']}》第 {c['page_no']} 页",
-                    expanded=False,
-                ):
-                    st.write(c["text"])
+                show_citation(c, "📄 最接近的内容")
 
     q = st.chat_input("问点什么…")
     if q:
@@ -109,11 +119,23 @@ with tab_ask:
                 "status": res.status,
                 "text": res.text,
                 "citations": [
-                    {"index": c.index, "doc_name": c.doc_name, "page_no": c.page_no, "text": c.text}
+                    {
+                        "index": c.index,
+                        "doc_name": c.doc_name,
+                        "page_no": c.page_no,
+                        "text": c.text,
+                        "pdf_file": c.pdf_file,
+                    }
                     for c in res.citations
                 ],
                 "related": [
-                    {"index": c.index, "doc_name": c.doc_name, "page_no": c.page_no, "text": c.text}
+                    {
+                        "index": c.index,
+                        "doc_name": c.doc_name,
+                        "page_no": c.page_no,
+                        "text": c.text,
+                        "pdf_file": c.pdf_file,
+                    }
                     for c in res.related
                 ],
                 "searched": "；".join(res.searched),

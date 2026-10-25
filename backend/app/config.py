@@ -24,6 +24,8 @@ DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip()
 # --- 存储 ---
 CHROMA_DIR = ROOT / "chroma_data"
 DATA_DIR = ROOT / "backend" / "data"
+# 入库时把原 PDF 复制到这里，保证「点出处看原页」永远能回溯
+PDF_STORE_DIR = DATA_DIR / "pdfs"
 
 # --- 学期 ---
 # 学期第一周周一的日期，用于计算当前教学周。按学校实际校历改。

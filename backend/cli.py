@@ -94,9 +94,11 @@ def cmd_index(path_str: str) -> None:
     chunks = chunk_doc(doc)
     store = Store()
     store.delete_doc(doc.doc_id)  # 重入库先清旧的，避免切片参数变化后残留
-    n = store.upsert(chunks)
+    pdf_file = store.store_pdf(path, doc.doc_id)
+    n = store.upsert(chunks, pdf_file=pdf_file)
     print(f"已入库：{doc.filename}")
     print(f"doc_id：{doc.doc_id}   页数：{doc.page_count}   写入切片：{n}")
+    print(f"原件留底：{pdf_file}")
     print(f"库内总切片：{store.count()}")
 
 

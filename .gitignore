@@ -10,6 +10,7 @@ __pycache__/
 
 # 本地数据与库
 chroma_data/
+backend/data/pdfs/
 backend/samples/*.pdf
 
 # 个人与报名信息（含 UID、姓名、学校、手机号，绝不进公开仓库）

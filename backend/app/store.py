@@ -11,13 +11,14 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 import chromadb
 
 from .chunker import Chunk
-from .config import CHROMA_DIR
+from .config import CHROMA_DIR, PDF_STORE_DIR, ROOT
 from .embedding import MODEL_TAG, BGEEmbeddingFunction
 
 # 集合名带模型标识：换嵌入模型 = 新集合，避免新旧向量混在一起（维度也不同）
@@ -32,11 +33,16 @@ class Hit:
     page_no: int
     text: str
     distance: float
+    pdf_file: str = ""  # 相对项目根目录的原件路径，用于「看原页」
 
     @property
     def score(self) -> float:
         """0~1，越大越相关。仅用于展示排序，不参与阈值判断。"""
         return 1.0 / (1.0 + self.distance)
+
+    @property
+    def pdf_path(self) -> Path:
+        return ROOT / self.pdf_file if self.pdf_file else Path()
 
 
 class Store:
@@ -50,7 +56,15 @@ class Store:
         )
 
     # --- 写入 ---
-    def upsert(self, chunks: list[Chunk]) -> int:
+    def store_pdf(self, src: Path, doc_id: str) -> str:
+        """把原件复制一份留底，返回相对项目根目录的路径。"""
+        PDF_STORE_DIR.mkdir(parents=True, exist_ok=True)
+        dst = PDF_STORE_DIR / f"{doc_id}.pdf"
+        if not dst.exists() or dst.stat().st_size != Path(src).stat().st_size:
+            shutil.copy2(src, dst)
+        return str(dst.relative_to(ROOT)).replace("\\", "/")
+
+    def upsert(self, chunks: list[Chunk], pdf_file: str = "") -> int:
         if not chunks:
             return 0
         self.col.upsert(
@@ -62,6 +76,7 @@ class Store:
                     "doc_name": c.doc_name,
                     "page_no": c.page_no,
                     "ordinal": c.ordinal,
+                    "pdf_file": pdf_file,
                 }
                 for c in chunks
             ],
@@ -89,6 +104,7 @@ class Store:
                 page_no=m["page_no"],
                 text=d,
                 distance=float(dist),
+                pdf_file=m.get("pdf_file", ""),
             )
             for i, d, m, dist in zip(ids, docs, metas, dists)
         ]

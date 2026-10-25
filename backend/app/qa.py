@@ -41,6 +41,7 @@ class Citation:
     doc_name: str
     page_no: int
     text: str
+    pdf_file: str = ""
 
 
 @dataclass
@@ -89,6 +90,7 @@ def _to_citation(index: int, hit: Hit) -> Citation:
         doc_name=hit.doc_name,
         page_no=hit.page_no,
         text=hit.text,
+        pdf_file=hit.pdf_file,
     )
 
 
