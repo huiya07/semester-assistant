@@ -57,13 +57,25 @@ $env:HF_ENDPOINT = "https://hf-mirror.com"
 
 ### 准备资料
 
-仓库**不附带 PDF**（版权与体积原因）。任何带文本层的 PDF 都可以，例如：
+仓库自带一份**无版权的示例讲义**（虚构的数据分析入门内容），clone 下来就能直接跑通全流程：
+
+```text
+backend/samples/sample-lecture-notes.pdf
+```
+
+也可以上传你自己的 PDF（任何带文本层的都行）。示例讲义可用脚本重新生成：
+
+```powershell
+uv run python tools/make_sample_pdf.py
+```
+
+想用真实论文测试：
 
 ```powershell
 curl.exe -L -o backend\samples\attention.pdf "https://arxiv.org/pdf/1706.03762v7"
 ```
 
-然后在界面左侧上传该文件，点「加入资料库」。
+然后在界面左侧上传文件，点「加入资料库」。
 
 > 扫描版 PDF（无文本层）会被明确拒绝，本项目不做 OCR。
 
