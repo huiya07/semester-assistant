@@ -12,18 +12,36 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
 
 # 必须在导入 sentence_transformers 之前设置。
 # 国内网络直连 HuggingFace 基本不通，默认走镜像；想用官方源可自行设置 HF_ENDPOINT。
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
-
-from sentence_transformers import SentenceTransformer  # noqa: E402
 
 MODEL_NAME = "BAAI/bge-small-zh-v1.5"
 MODEL_TAG = "bge_zh"  # 用于区分不同嵌入模型产生的向量
 
 # BGE 官方建议：查 query 时加指令前缀，文档侧不加。中文 v1.5 用这条。
 QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
+
+
+def _model_cached() -> bool:
+    """模型是否已经在本地缓存。
+
+    sentence-transformers 每次加载都会向镜像站查一次更新，
+    网络不好时会让启动卡在重试上（实测遇到过 SSL EOF 重试 5 次）。
+    本地已有缓存就直接离线加载，既快又不依赖网络。
+    """
+    hf_home = Path(os.getenv("HF_HOME", Path.home() / ".cache" / "huggingface"))
+    repo_dir = hf_home / "hub" / "models--BAAI--bge-small-zh-v1.5"
+    return repo_dir.exists()
+
+
+if _model_cached():
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+from sentence_transformers import SentenceTransformer  # noqa: E402
 
 
 @lru_cache(maxsize=1)

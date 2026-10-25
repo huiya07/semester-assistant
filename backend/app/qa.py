@@ -55,11 +55,18 @@ class Answer:
     best_distance: float | None = None
 
 
+class MissingAPIKeyError(RuntimeError):
+    """没有配置任何 API Key。单独区分出来，好给用户一条能照做的提示。"""
+
+
 def _client() -> OpenAI:
     """取运行期配置：界面保存的优先，其次 .env。"""
     s = load_settings()
     if not s.ready:
-        require_api_key()  # 抛出可执行的报错提示
+        raise MissingAPIKeyError(
+            "还没有配置 API Key。"
+            "在页面顶部的「⚙ 模型配置」里填好并保存，或编辑项目根目录的 .env 文件。"
+        )
     return OpenAI(api_key=s.api_key, base_url=s.base_url)
 
 
@@ -189,6 +196,13 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
             max_tokens=800,
         )
         raw = (resp.choices[0].message.content or "").strip()
+    except MissingAPIKeyError as e:
+        return Answer(
+            status="error",
+            text=str(e),
+            searched=[],
+            best_distance=best,
+        )
     except Exception as e:  # 断网、超时、额度不足都走这里
         return Answer(
             status="error",
