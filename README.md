@@ -28,11 +28,21 @@
 
 前置：**Python 3.12+**、[uv](https://docs.astral.sh/uv/)。
 
-```powershell
-# 1. 安装依赖（uv 自动创建 .venv）
-uv sync
+### 方式一：一键脚本（推荐，国内网络已加速）
 
-# 2. 配置环境变量
+```powershell
+.\setup.ps1
+```
+
+脚本会从华为云镜像安装依赖并直接启动界面。
+
+### 方式二：手动三步
+
+```powershell
+# 1. 安装依赖（国内建议加镜像参数，见下）
+uv sync --default-index https://repo.huaweicloud.com/repository/pypi/simple
+
+# 2. 配置环境变量（也可以跳过，启动后在界面里填）
 copy .env.example .env
 # 编辑 .env，填入 DEEPSEEK_API_KEY=你的key
 
@@ -48,9 +58,18 @@ uv run streamlit run app.py
 
 | 需要下载 | 大小 | 能否直连 | 说明 |
 |---|---|---|---|
-| Python 依赖（`uv sync`） | 约 1 GB | 通常可以，但慢 | 慢的话设镜像：`$env:UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"` |
+| Python 依赖（`uv sync`） | 约 1 GB | 官方源在这里 **403 拒绝** | 用 `--default-index` 走华为云，实测 7.5 MB/s |
 | 中文嵌入模型 `bge-small-zh-v1.5` | 约 100 MB | **不能直连** | 代码已默认走 `hf-mirror.com` 镜像，无需额外配置 |
 | DeepSeek API | — | 可以 | 需要自行申请 API Key |
+
+镜像源实测（同一台机器，2026-10-26）：
+
+| 源 | 状态 |
+|---|---|
+| 华为云 `repo.huaweicloud.com` | ✅ 0.05s 响应 / 7.5 MB/s 下载 |
+| 阿里云 `mirrors.aliyun.com` | ✅ 0.09s 响应 |
+| 清华 TUNA | ❌ 本机连续失败（HTTP 000） |
+| 官方 PyPI | ⚠️ 索引可达，但 wheel 下载 **403** |
 
 依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1 GB。首次启动加载模型需要 10–30 秒，界面会显示「正在加载嵌入模型…」。
 

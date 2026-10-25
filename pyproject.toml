@@ -14,3 +14,15 @@ dependencies = [
     "streamlit>=1.66.1",
     "uvicorn>=0.54.0",
 ]
+
+# ---- 国内网络加速 ----
+# 默认走华为云镜像（实测 0.05s 级），官方 PyPI 作为备选。
+# 如果镜像不可用，把下面 [[tool.uv.index]] 两段删掉，uv 会回到官方源。
+[[tool.uv.index]]
+name = "huaweicloud"
+url = "https://repo.huaweicloud.com/repository/pypi/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
