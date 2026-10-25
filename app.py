@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from datetime import date
@@ -251,6 +252,7 @@ with tab_ask:
         st.rerun()
 
 with tab_week:
+    st.caption("示例数据 · 可在下方导入自己的课表与作业")
     view = week_view(date.today())
     if view.get("before_semester"):
         st.info(f"学期还没开始（开学日 {view['monday']}）。")
@@ -280,3 +282,51 @@ with tab_week:
     else:
         st.divider()
         st.caption("接下来两周没有到期作业。")
+
+    # ---- 导入 / 管理 ----
+    st.divider()
+    with st.expander("📥 导入 / 管理课表与作业"):
+        from backend.app.semester import USER_DATA_DIR, load_assignments, load_courses, reload_data
+
+        user_c = USER_DATA_DIR / "courses.json"
+        user_a = USER_DATA_DIR / "assignments.json"
+        st.caption(
+            f"当前课表：**{len(load_courses())}** 条（{'自定义' if user_c.exists() else '示例'}）　·　"
+            f"当前作业：**{len(load_assignments())}** 条（{'自定义' if user_a.exists() else '示例'}）"
+        )
+
+        with st.form("import_form"):
+            f_c = st.file_uploader("课表 JSON（含 courses 数组）", type=["json"])
+            f_a = st.file_uploader("作业 JSON（含 assignments 数组）", type=["json"])
+            saved = False
+            if st.form_submit_button("保存导入", type="primary"):
+                for f, target, key in ((f_c, user_c, "courses"), (f_a, user_a, "assignments")):
+                    if f is None:
+                        continue
+                    try:
+                        data = json.loads(f.getvalue().decode("utf-8"))
+                    except Exception as e:
+                        st.error(f"{f.name} 不是合法 JSON：{e}")
+                        continue
+                    if isinstance(data, list):
+                        data = {key: data}
+                    if not isinstance(data, dict) or key not in data:
+                        st.error(f"{f.name} 缺少 `{key}` 数组")
+                        continue
+                    USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+                    target.write_text(
+                        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
+                    saved = True
+                if saved:
+                    reload_data()
+                    st.success("已导入")
+                    st.rerun()
+
+        if user_c.exists() or user_a.exists():
+            if st.button("恢复默认（删除已导入的数据）"):
+                for p in (user_c, user_a):
+                    p.unlink(missing_ok=True)
+                reload_data()
+                st.success("已恢复为仓库自带的示例数据")
+                st.rerun()

@@ -9,10 +9,26 @@ from __future__ import annotations
 import json
 from datetime import date, datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 
 from .config import DATA_DIR, SEMESTER_START
 
 WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+# 用户导入的数据放在 local/（不进仓库），存在时覆盖仓库自带的示例
+USER_DATA_DIR = DATA_DIR.parents[1] / "local" / "data"
+
+
+def data_path(filename: str) -> Path:
+    """优先用用户导入的文件，其次用仓库自带示例。"""
+    user = USER_DATA_DIR / filename
+    return user if user.exists() else DATA_DIR / filename
+
+
+def reload_data() -> None:
+    """导入或恢复默认后清缓存，否则页面还读旧的。"""
+    load_courses.cache_clear()
+    load_assignments.cache_clear()
 
 
 def _semester_start() -> date:
@@ -21,16 +37,14 @@ def _semester_start() -> date:
 
 @lru_cache(maxsize=1)
 def load_courses() -> list[dict]:
-    path = DATA_DIR / "courses.json"
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(data_path("courses.json").read_text(encoding="utf-8"))
     return data["courses"]
 
 
 @lru_cache(maxsize=1)
 def load_assignments() -> list[dict]:
     """作业是一次性事件（带截止日期），不是每周固定条目。"""
-    path = DATA_DIR / "assignments.json"
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(data_path("assignments.json").read_text(encoding="utf-8"))
     return data["assignments"]
 
 
