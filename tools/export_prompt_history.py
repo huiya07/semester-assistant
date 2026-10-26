@@ -61,6 +61,18 @@ BLOCK_WORDS = (
     "梯子",
     "机场节点",
     "TUN",
+    # 视频配音相关的工具与服务，不属于作品技术内容
+    "配音",
+    "TTS",
+    "tts",
+    "edge-tts",
+    "音色",
+    "CosyVoice",
+    "MiniMax",
+    "minimax",
+    "硅基",
+    "SiliconFlow",
+    "siliconflow",
 )
 
 REDACTIONS = [
