@@ -65,21 +65,39 @@ BLOCK_WORDS = (
 
 REDACTIONS = [
     (re.compile(r"sk-[A-Za-z0-9]{16,}"), "[REDACTED_KEY]"),
-    (re.compile(r"2119569"), "[UID]"),
     (re.compile(r"1[3-9]\d{9}"), "[手机号]"),
-    (re.compile(r"[A-Za-z]:\\Users\\maybe\\[^\s\"'，。）]*"), "<本地路径>"),
-    (re.compile(r"[A-Za-z]:\\maybe\\[^\s\"'，。）]*"), "<本地路径>"),
-    (re.compile(r"西安职业技术学院"), "<学校>"),
-    (re.compile(r"AI26102"), "<班级>"),
-    (re.compile(r"huiya07"), "<GitHub用户名>"),
+    (re.compile(r"[A-Za-z]:\\Users\\[^\s\"'，。）]*"), "<本地路径>"),
+    (re.compile(r"[A-Za-z]:\\[^\s\"'，。）]*\\[^\s\"'，。）]*"), "<本地路径>"),
 ]
+
+# 具体的人名、学校、班级、UID 不写在这里（脚本是公开的，写死等于列清单）。
+# 放在 local/redact.txt 一行一个，该文件不进仓库。
+LOCAL_REDACT_FILE = ROOT / "local" / "redact.txt"
 
 IMAGE_PLACEHOLDER = re.compile(r"\[Image: source:.*?\]", re.DOTALL)
 
 
-def redact(text: str) -> str:
+def load_local_redactions() -> list[tuple[re.Pattern, str]]:
+    """从 local/redact.txt 读取需要屏蔽的具体词（学校名、班级、UID、人名等）。
+
+    文件格式：一行一个词，空行和 # 开头的行忽略。
+    """
+    if not LOCAL_REDACT_FILE.exists():
+        print(f"⚠ 未找到 {LOCAL_REDACT_FILE}，只做了通用脱敏（密钥/手机号/路径）。")
+        return []
+    rules = []
+    for line in LOCAL_REDACT_FILE.read_text(encoding="utf-8").splitlines():
+        word = line.strip()
+        if not word or word.startswith("#"):
+            continue
+        rules.append((re.compile(re.escape(word)), "[已脱敏]"))
+    print(f"已加载 {len(rules)} 条本地屏蔽词。")
+    return rules
+
+
+def redact(text: str, extra: list[tuple[re.Pattern, str]]) -> str:
     text = IMAGE_PLACEHOLDER.sub("[用户发送了一张截图（本文档不含图片）]", text)
-    for pattern, repl in REDACTIONS:
+    for pattern, repl in list(REDACTIONS) + extra:
         text = pattern.sub(repl, text)
     return text
 
@@ -111,6 +129,7 @@ def main() -> None:
         raise SystemExit(f"找不到会话文件：{src}")
 
     turns: list[tuple[str, str, str]] = []  # (timestamp, role, text)
+    extra_redactions = load_local_redactions()
     with src.open(encoding="utf-8") as f:
         for line in f:
             try:
@@ -135,7 +154,7 @@ def main() -> None:
             role = d["type"]
             if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
                 text = text[:MAX_ASSISTANT_CHARS].rstrip() + "…（后略）"
-            turns.append((d.get("timestamp", "")[:19], role, redact(text)))
+            turns.append((d.get("timestamp", "")[:19], role, redact(text, extra_redactions)))
 
     lines = [
         "# AI 对话历史（节选）",
