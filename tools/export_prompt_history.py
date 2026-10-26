@@ -47,6 +47,7 @@ SKIP_PREFIXES = (
 )
 
 # 涉及本机网络环境的内容整条略去：与作品技术本身无关，也不适合出现在评审材料里
+# 注意：只挡「环境/凭证」类，正常的工具讨论（比如视频配音怎么选）不该删。
 BLOCK_WORDS = (
     "代理",
     "proxy",
@@ -61,18 +62,6 @@ BLOCK_WORDS = (
     "梯子",
     "机场节点",
     "TUN",
-    # 视频配音相关的工具与服务，不属于作品技术内容
-    "配音",
-    "TTS",
-    "tts",
-    "edge-tts",
-    "音色",
-    "CosyVoice",
-    "MiniMax",
-    "minimax",
-    "硅基",
-    "SiliconFlow",
-    "siliconflow",
 )
 
 REDACTIONS = [
