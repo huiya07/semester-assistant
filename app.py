@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import time
 from datetime import date
 from pathlib import Path
 
@@ -309,6 +310,8 @@ with tab_ask:
                 st.markdown(item["text"])
             if item["status"] == "not_found" and item.get("searched"):
                 st.caption("🔍 " + item["searched"])
+            if item.get("elapsed"):
+                st.caption(f"⏱ 耗时 {item['elapsed']:.1f} 秒")
             for c in item["citations"]:
                 show_citation(c, f"📄 出处 [{c['index']}]", f"m{mi}_cite")
             for c in item.get("related", []):
@@ -317,12 +320,15 @@ with tab_ask:
     q = st.chat_input("问点什么…")
     if q:
         with st.spinner("检索并回答…"):
+            started = time.perf_counter()
             res = answer(q, store=store)
+            elapsed = time.perf_counter() - started
         st.session_state.history.append(
             {
                 "q": q,
                 "status": res.status,
                 "text": res.text,
+                "elapsed": elapsed,
                 "citations": [
                     {
                         "index": c.index,
