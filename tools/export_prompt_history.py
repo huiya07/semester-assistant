@@ -46,23 +46,24 @@ SKIP_PREFIXES = (
     "[Request interrupted",
 )
 
-# 涉及本机网络环境的内容整条略去：与作品技术本身无关，也不适合出现在评审材料里
-# 注意：只挡「环境/凭证」类，正常的工具讨论（比如视频配音怎么选）不该删。
-BLOCK_WORDS = (
-    "代理",
-    "proxy",
-    "Proxy",
-    "PROXY",
-    "Clash",
-    "clash",
-    "7897",
-    "VPN",
-    "vpn",
-    "翻墙",
-    "梯子",
-    "机场节点",
-    "TUN",
-)
+# 涉及本机网络环境的内容：**替换成中性表述**而不是整条删除。
+# 早先用整条跳过，结果误删了 4 条重要的项目讨论（只要顺带提了一个词就整段没了）。
+ENV_REPLACEMENTS = {
+    "Clash Verge": "网络工具",
+    "Clash": "网络工具",
+    "clash": "网络工具",
+    "机场节点": "网络服务",
+    "翻墙": "访问",
+    "梯子": "工具",
+    "代理": "网络",
+    "proxy": "network",
+    "Proxy": "Network",
+    "PROXY": "NETWORK",
+    "7897": "[端口]",
+    "VPN": "网络",
+    "vpn": "network",
+    "TUN": "[网络模式]",
+}
 
 REDACTIONS = [
     (re.compile(r"sk-[A-Za-z0-9]{16,}"), "[REDACTED_KEY]"),
@@ -98,6 +99,9 @@ def load_local_redactions() -> list[tuple[re.Pattern, str]]:
 
 def redact(text: str, extra: list[tuple[re.Pattern, str]]) -> str:
     text = IMAGE_PLACEHOLDER.sub("[用户发送了一张截图（本文档不含图片）]", text)
+    # 先替换环境相关词（长词优先，避免 "Clash Verge" 被 "Clash" 先吃掉）
+    for word in sorted(ENV_REPLACEMENTS, key=len, reverse=True):
+        text = text.replace(word, ENV_REPLACEMENTS[word])
     for pattern, repl in list(REDACTIONS) + extra:
         text = pattern.sub(repl, text)
     return text
@@ -145,12 +149,10 @@ def main() -> None:
             text = content_text(d.get("message", {}))
             if not text:
                 continue
-            # 跳过系统注入与命令包装
+            # 跳过系统注入与命令包装（这些不是对话）
             if text.startswith(SKIP_PREFIXES):
                 continue
             if text.startswith("<") and text.endswith(">"):
-                continue
-            if any(w in text for w in BLOCK_WORDS):
                 continue
             role = d["type"]
             if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
