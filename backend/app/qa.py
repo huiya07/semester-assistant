@@ -237,3 +237,157 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
         searched=_searched_desc(hits),
         best_distance=best,
     )
+
+
+# ---------------------------------------------------------------------------
+# 流式版本（React 前端用）
+#
+# 与 answer() 共用检索、上下文选择与引用校验逻辑，只是把模型调用换成 stream=True。
+# 事件序列：
+#   {"type":"meta", ...}        检索完成，附带检索范围（前端可先显示）
+#   {"type":"token", "text":…}  增量文本
+#   {"type":"done", "citations":[…]}   完成，带校验通过的引用
+#   {"type":"not_found", …}     检索不到 / 模型拒答 / 引用全越界
+#   {"type":"error", "text":…}  调用失败
+#
+# NO_ANSWER 处理：模型可能吐到一半才输出该标记，所以前面先扣住一段缓冲，
+# 确认不是 NO_ANSWER 再放出去，避免前端闪一下再清空。
+# ---------------------------------------------------------------------------
+
+_HOLD_CHARS = 12  # 足够覆盖 "NO_ANSWER" 及前导空白
+
+
+def answer_stream(question: str, top_k: int = 8, store: Store | None = None):
+    """生成器，逐条产出事件字典。"""
+    question = question.strip()
+    if not question:
+        yield {"type": "not_found", "text": "问题为空。", "searched": ["没有发送检索请求"]}
+        return
+
+    store = store or Store()
+
+    if store.count() == 0:
+        yield {
+            "type": "not_found",
+            "text": "知识库还是空的，请先上传资料。",
+            "searched": ["知识库为空"],
+        }
+        return
+
+    hits = store.search(question, top_k=top_k)
+    if not hits:
+        nf = _not_found([], None)
+        yield {
+            "type": "not_found",
+            "text": nf.text,
+            "related": [],
+            "searched": nf.searched,
+        }
+        return
+
+    best = min(h.distance for h in hits)
+    if best > MAX_DISTANCE:
+        nf = _not_found(hits, best)
+        yield {
+            "type": "not_found",
+            "text": nf.text,
+            "related": [],
+            "searched": nf.searched,
+            "best_distance": best,
+        }
+        return
+
+    hits = _select_context(hits)
+    yield {"type": "meta", "searched": _searched_desc(hits), "best_distance": best}
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": f"资料片段：\n\n{_format_context(hits)}\n\n问题：{question}",
+        },
+    ]
+
+    buf = ""
+    raw_parts: list[str] = []
+    try:
+        s = load_settings()
+        stream = _client().chat.completions.create(
+            model=s.model,
+            messages=messages,
+            temperature=0,
+            max_tokens=800,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            if not delta:
+                continue
+            raw_parts.append(delta)
+            buf += delta
+            # 还短且可能是 NO_ANSWER：继续扣住
+            if len(buf) < _HOLD_CHARS and NO_ANSWER_MARK.startswith(buf.strip()[: len(NO_ANSWER_MARK)]):
+                continue
+            if buf:
+                yield {"type": "token", "text": buf}
+                buf = ""
+    except MissingAPIKeyError as e:
+        yield {"type": "error", "text": str(e)}
+        return
+    except Exception as e:
+        yield {
+            "type": "error",
+            "text": "调用大模型失败，请检查网络或 API 配置后重试。",
+            "detail": type(e).__name__,
+        }
+        return
+
+    raw = "".join(raw_parts).strip()
+
+    if NO_ANSWER_MARK in raw:
+        nf = _not_found(hits, best)
+        yield {
+            "type": "not_found",
+            "text": nf.text,
+            "related": [
+                {
+                    "index": c.index, "doc_id": c.doc_id, "doc_name": c.doc_name,
+                    "page_no": c.page_no, "text": c.text, "pdf_file": c.pdf_file,
+                }
+                for c in nf.related
+            ],
+            "searched": nf.searched,
+        }
+        return
+
+    used = {int(n) for n in re.findall(r"\[(\d+)\]", raw)}
+    valid = {i for i in used if 1 <= i <= len(hits)}
+
+    if (used and not valid) or not valid:
+        nf = _not_found(hits, best)
+        yield {
+            "type": "not_found",
+            "text": nf.text,
+            "related": [
+                {
+                    "index": c.index, "doc_id": c.doc_id, "doc_name": c.doc_name,
+                    "page_no": c.page_no, "text": c.text, "pdf_file": c.pdf_file,
+                }
+                for c in nf.related
+            ],
+            "searched": nf.searched,
+        }
+        return
+
+    yield {
+        "type": "done",
+        "citations": [
+            {
+                "index": c.index, "doc_id": c.doc_id, "doc_name": c.doc_name,
+                "page_no": c.page_no, "text": c.text, "pdf_file": c.pdf_file,
+            }
+            for c in (_to_citation(i, hits[i - 1]) for i in sorted(valid))
+        ],
+        "searched": _searched_desc(hits),
+        "best_distance": best,
+    }

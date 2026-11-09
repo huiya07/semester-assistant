@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface-1 text-ink-900 font-sans antialiased;
+  margin: 0;
+}
+
+/* 细滚动条，贴近桌面端观感 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(31, 30, 29, 0.14);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(31, 30, 29, 0.24);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 流式输出的光标 */
+@keyframes sa-caret {
+  0%, 45% { opacity: 1; }
+  55%, 100% { opacity: 0.15; }
+}
+.sa-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  vertical-align: -0.18em;
+  margin-left: 2px;
+  background: currentColor;
+  animation: sa-caret 1s steps(1, end) infinite;
+}
+
+/* 骨架条 */
+@keyframes sa-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.sa-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(31, 30, 29, 0.05) 25%,
+    rgba(31, 30, 29, 0.09) 37%,
+    rgba(31, 30, 29, 0.05) 63%
+  );
+  background-size: 200% 100%;
+  animation: sa-shimmer 1.4s ease-in-out infinite;
+}
+
+/* 呼吸点：等待检索时的状态提示 */
+@keyframes sa-breathe {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1); }
+}
+.sa-dot {
+  animation: sa-breathe 1.2s ease-in-out infinite;
+}
+
+/* 长文档渐隐边缘 */
+.sa-fade-bottom {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
+}
