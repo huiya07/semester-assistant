@@ -67,7 +67,8 @@ def _client() -> OpenAI:
             "还没有配置 API Key。"
             "在页面顶部的「⚙ 模型配置」里填好并保存，或编辑项目根目录的 .env 文件。"
         )
-    return OpenAI(api_key=s.api_key, base_url=s.base_url)
+    # 显式给超时：默认值偏长，模型侧卡住时前端要干等好几分钟
+    return OpenAI(api_key=s.api_key, base_url=s.base_url, timeout=90.0, max_retries=1)
 
 
 def _format_context(hits: list[Hit]) -> str:

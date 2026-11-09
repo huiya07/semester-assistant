@@ -8,15 +8,19 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  Clock,
+  Inbox,
   Loader2,
   MessageSquare,
   Plus,
+  Search,
   Send,
   Settings2,
+  Square,
   Trash2,
   X,
 } from 'lucide-react'
-import { api } from './api'
+import { ApiError, api } from './api'
 import { CdsButton } from './components/cds/CdsButton'
 import { ConfirmationDialog } from './components/cds/ConfirmationDialog'
 import { ScrollFadeContainer } from './components/cds/ScrollFadeContainer'
@@ -45,6 +49,19 @@ interface Msg {
 
 // ---------------------------------------------------------------- 小组件
 
+/**
+ * PDF 抽出来的文本保留了原始硬换行，直接渲染会出现「1.」独占一行、
+ * 「偏。」「，并说明原因。」这种标点悬在行首的观感。
+ * 这里按空行分段，段内单换行合并成空格，让浏览器自然重排；段落结构仍然保留。
+ */
+function tidySnippet(t: string): string {
+  return t
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s*\n\s*/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 function Spinner({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-[13px] text-ink-500">
@@ -66,6 +83,17 @@ function CitationCard({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const [showPage, setShowPage] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  // 展开原页后图片常落在折叠线以下，等它渲染出来再滚到可视区
+  useEffect(() => {
+    if (!showPage) return
+    const t = setTimeout(
+      () => imgRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+      120,
+    )
+    return () => clearTimeout(t)
+  }, [showPage])
 
   return (
     <div className="mt-2 overflow-hidden rounded-field border border-surface-3 bg-surface-0 transition-shadow hover:shadow-soft">
@@ -94,8 +122,8 @@ function CitationCard({
           className="overflow-hidden border-t border-surface-3 px-3 py-2.5"
         >
           <div className="mb-2 text-[12px] text-ink-400">命中片段</div>
-          <p className="whitespace-pre-wrap rounded-field bg-surface-1 px-3 py-2 text-[13px] leading-relaxed text-ink-700">
-            {c.text}
+          <p className="whitespace-pre-wrap break-words rounded-field bg-surface-1 px-3 py-2 text-[13px] leading-relaxed text-ink-700">
+            {tidySnippet(c.text)}
           </p>
           <div className="mt-2 flex items-center gap-3">
             <button
@@ -110,6 +138,7 @@ function CitationCard({
           </div>
           {showPage && c.pdf_file && (
             <img
+              ref={imgRef}
               src={api.pageUrl(c.doc_id, c.page_no)}
               alt={`第 ${c.page_no} 页`}
               className="mt-2 w-full rounded-field border border-surface-3"
@@ -132,7 +161,7 @@ function Message({ m }: { m: Msg }) {
     >
       {/* 用户消息 */}
       <div className="mb-3 flex justify-end">
-        <div className="max-w-[75%] rounded-card rounded-br-sm bg-surface-2 px-4 py-2.5 text-[14px] leading-relaxed text-ink-900">
+        <div className="max-w-[75%] break-words rounded-card rounded-br-sm bg-surface-2 px-4 py-2.5 text-[14px] leading-relaxed text-ink-900">
           {m.q}
         </div>
       </div>
@@ -147,7 +176,8 @@ function Message({ m }: { m: Msg }) {
             <QuietDotsWave label="检索资料中…" />
           )}
 
-          {m.text && (
+          {/* not_found 的正文改由下面的琥珀警示框承载，这里不再重复渲染一遍 */}
+          {m.text && m.status !== 'not_found' && (
             <div className="md-body text-[14px] leading-[1.75] text-ink-900">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
               {m.status === 'streaming' && <span className="sa-caret" />}
@@ -162,11 +192,17 @@ function Message({ m }: { m: Msg }) {
           )}
 
           {m.status !== 'streaming' && m.searched.length > 0 && (
-            <p className="mt-2 text-[12px] text-ink-300">🔍 {m.searched.join('；')}</p>
+            <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-relaxed text-ink-500">
+              <Search size={12} className="mt-[3px] shrink-0" />
+              <span>{m.searched.join('；')}</span>
+            </p>
           )}
 
           {m.elapsed !== undefined && (
-            <p className="mt-1 text-[12px] text-ink-300">⏱ 用时 {m.elapsed.toFixed(1)} 秒</p>
+            <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-500">
+              <Clock size={12} className="shrink-0" />
+              <span>用时 {m.elapsed < 0.1 ? '不到 0.1' : m.elapsed.toFixed(1)} 秒</span>
+            </p>
           )}
 
           {m.citations.map((c, i) => (
@@ -205,7 +241,7 @@ function Sidebar({
           <BookOpen size={18} className="text-brand-600" />
           学期助手
         </h1>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
+        <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
           资料问答 · 每条结论都带页码出处
         </p>
       </div>
@@ -233,7 +269,7 @@ function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4">
-        <div className="px-2 pb-1.5 text-[11px] uppercase tracking-wide text-ink-300">
+        <div className="px-2 pb-1.5 text-[11px] uppercase tracking-wide text-ink-500">
           资料库 · {docs.length} 篇 / {totalCunks} 片段
         </div>
         {docs.length === 0 && (
@@ -247,10 +283,10 @@ function Sidebar({
             <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700" title={d.doc_name}>
               {d.doc_name}
             </span>
-            <span className="shrink-0 text-[11px] text-ink-300">{d.chunks}</span>
+            <span className="shrink-0 text-[11px] text-ink-500">{d.chunks}</span>
             <button
               onClick={() => onDelete(d)}
-              className="shrink-0 rounded p-1 text-ink-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+              className="shrink-0 rounded p-1.5 text-ink-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-400"
               title="删除"
             >
               <Trash2 size={13} />
@@ -275,8 +311,9 @@ function SettingsPanel({
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('')
-  const [msg, setMsg] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
 
   useEffect(() => {
     if (settings) {
@@ -294,21 +331,23 @@ function SettingsPanel({
     setBusy(true)
     try {
       const r = await api.putSettings({ base_url: baseUrl, api_key: apiKey, model })
-      setMsg(r.message)
+      setMsg({ ok: true, text: r.message })
       setApiKey('')
       onSaved()
     } catch (e) {
-      setMsg((e as Error).message)
+      setMsg({ ok: false, text: (e as Error).message })
     } finally {
       setBusy(false)
     }
   }
 
   return (
+    <>
     <div className="border-b border-surface-3 bg-surface-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-5 py-2.5 text-left text-[13px] text-ink-500 hover:bg-surface-1"
+        aria-expanded={open}
+        className="flex items-center gap-2 px-5 py-2.5 text-left text-[13px] text-ink-500 hover:bg-surface-1"
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <Settings2 size={14} />
@@ -357,20 +396,45 @@ function SettingsPanel({
               {busy ? '保存中…' : '保存'}
             </button>
             <button
-              onClick={async () => {
-                const r = await api.clearSettings()
-                setMsg(r.message)
-                onSaved()
-              }}
+              onClick={() => setClearOpen(true)}
               className="rounded-field border border-surface-3 px-4 py-1.5 text-[13px] text-ink-500 hover:bg-surface-1"
             >
               清除（回退 .env）
             </button>
-            {msg && <span className="text-[12px] text-ink-400">{msg}</span>}
+            {msg && (
+              <span
+                className={`text-[12px] ${msg.ok ? 'text-brand-700' : 'text-red-600'}`}
+                role="status"
+              >
+                {msg.text}
+              </span>
+            )}
           </div>
         </div>
       )}
     </div>
+
+    <ConfirmationDialog
+      isOpen={clearOpen}
+      onClose={() => setClearOpen(false)}
+      onConfirm={async () => {
+        setClearOpen(false)
+        try {
+          const r = await api.clearSettings()
+          setMsg({ ok: true, text: r.message })
+          onSaved()
+        } catch (e) {
+          setMsg({ ok: false, text: (e as Error).message })
+        }
+      }}
+      title="清除模型配置"
+      description="要清除界面里保存的 Base URL / API Key / 模型名吗？清除后会回退到项目根目录 .env 里的配置。"
+      confirmLabel="确认清除"
+      cancelLabel="取消"
+      variant="danger"
+      size="md"
+    />
+    </>
   )
 }
 
@@ -399,11 +463,11 @@ function WeekPanel({ view }: { view: WeekView | null }) {
           >
             <div className="mb-1 flex items-baseline justify-between">
               <span className="text-[12px] font-medium text-ink-700">{d.weekday}</span>
-              <span className="text-[11px] text-ink-300">{d.date.slice(5)}</span>
+              <span className="text-[11px] text-ink-500">{d.date.slice(5)}</span>
             </div>
 
             {d.courses.length === 0 && d.due.length === 0 && (
-              <div className="py-2 text-center text-[11px] text-ink-300">—</div>
+              <div className="py-2 text-center text-[11px] text-ink-500">—</div>
             )}
 
             {d.courses.map((c, i) => (
@@ -420,7 +484,7 @@ function WeekPanel({ view }: { view: WeekView | null }) {
                 <div className="truncate text-[11px] font-medium text-red-700" title={a.course}>
                   ⚠ {a.course}
                 </div>
-                <div className="truncate text-[11px] text-red-600/80" title={a.title}>
+                <div className="truncate text-[11px] text-red-700" title={a.title}>
                   {a.title}
                 </div>
               </div>
@@ -457,6 +521,7 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
   const cRef = useRef<HTMLInputElement>(null)
   const aRef = useRef<HTMLInputElement>(null)
 
@@ -489,13 +554,16 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
+    <>
     <div className="mt-8 rounded-card border border-surface-3 bg-surface-0">
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] text-ink-500 hover:bg-surface-1"
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        📥 导入 / 管理课表与作业
+        <Inbox size={14} />
+        导入 / 管理课表与作业
       </button>
 
       {open && (
@@ -540,21 +608,15 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
               <CdsButton
                 variant="danger"
                 size="sm"
-                onClick={async () => {
-                  if (!confirm('要用示例数据替换当前课表与作业吗？已导入的自定义数据会被删除，且无法撤销。')) return
-                  const r = await api.resetSemester()
-                  setMsg(r.message)
-                  await refresh()
-                  onChanged()
-                }}
+                onClick={() => setResetOpen(true)}
               >
                 恢复默认
               </CdsButton>
             )}
-            {msg && <span className="text-[12px] text-ink-400">{msg}</span>}
+            {msg && <span className="text-[12px] text-ink-500">{msg}</span>}
           </div>
 
-          <p className="text-[11px] leading-relaxed text-ink-300">
+          <p className="text-[12px] leading-relaxed text-ink-500">
             课表格式：<code className="rounded bg-surface-2 px-1">{'{ "courses": [ {"name","day","start_section","end_section","weeks"} ] }'}</code>
             <br />
             作业格式：<code className="rounded bg-surface-2 px-1">{'{ "assignments": [ {"id","course","title","due_date"} ] }'}</code>
@@ -562,6 +624,29 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
         </div>
       )}
     </div>
+
+    <ConfirmationDialog
+      isOpen={resetOpen}
+      onClose={() => setResetOpen(false)}
+      onConfirm={async () => {
+        setResetOpen(false)
+        try {
+          const r = await api.resetSemester()
+          setMsg(r.message)
+          await refresh()
+          onChanged()
+        } catch (e) {
+          setMsg(`恢复失败：${(e as Error).message}`)
+        }
+      }}
+      title="恢复默认数据"
+      description="要用仓库自带的示例数据替换当前课表与作业吗？已导入的自定义数据会被删除，且无法撤销。"
+      confirmLabel="确认恢复"
+      cancelLabel="取消"
+      variant="danger"
+      size="md"
+    />
+    </>
   )
 }
 
@@ -589,6 +674,15 @@ export default function App() {
 
   const abortRef = useRef<AbortController | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // 输入框随内容增高（上限 160px），否则多行问题被压成一行滚动条
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+  }, [question])
 
   const refreshLibrary = useCallback(async () => {
     const r = await api.getLibrary()
@@ -696,10 +790,20 @@ export default function App() {
         ac.signal,
       )
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') {
+      const kind = e instanceof ApiError ? e.kind : 'network'
+      if (kind !== 'aborted') {
         setMsgs((prev) =>
           prev.map((m) =>
             m.id === id ? { ...m, status: 'error', text: (e as Error).message } : m,
+          ),
+        )
+      } else {
+        // 用户主动停止：保留已经出来的内容，标记完成而不是报错
+        setMsgs((prev) =>
+          prev.map((m) =>
+            m.id === id
+              ? { ...m, status: m.text ? 'ok' : 'not_found', text: m.text || '已停止。' }
+              : m,
           ),
         )
       }
@@ -773,7 +877,7 @@ export default function App() {
                               </span>
                               <div>
                                 <div className="text-[13px] font-medium text-ink-900">{t}</div>
-                                <div className="mt-0.5 text-[12px] leading-relaxed text-ink-400">
+                                <div className="mt-0.5 text-[12px] leading-relaxed text-ink-500">
                                   {d}
                                 </div>
                               </div>
@@ -795,7 +899,10 @@ export default function App() {
                           ].map((q) => (
                             <button
                               key={q}
-                              onClick={() => setQuestion(q)}
+                              onClick={() => {
+                                setQuestion(q)
+                                requestAnimationFrame(() => taRef.current?.focus())
+                              }}
                               className="rounded-field border border-surface-3 bg-surface-0 px-3 py-1.5 text-left text-[13px] text-ink-600 transition-colors hover:border-brand-300 hover:text-brand-700"
                             >
                               {q}
@@ -809,7 +916,8 @@ export default function App() {
                 {msgs.map((m) => (
                   <Message key={m.id} m={m} />
                 ))}
-                <div ref={endRef} />
+                {/* scroll-mb 让锚点停在输入框上方，不被悬浮的玻璃条盖住 */}
+                <div ref={endRef} className="h-px scroll-mb-[240px]" />
               </div>
             </ScrollFadeContainer>
 
@@ -818,9 +926,11 @@ export default function App() {
 
             {/* 悬浮玻璃输入框 */}
             <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-5">
-              <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-card border border-white/70 bg-white/70 p-1.5 shadow-[0_10px_36px_rgba(31,30,29,0.12)] backdrop-blur-xl">
+              <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-card border border-white/70 bg-white/70 p-1.5 shadow-[0_10px_36px_rgba(31,30,29,0.12)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-brand-300 focus-within:shadow-[0_10px_36px_rgba(63,97,163,0.20)] focus-within:ring-2 focus-within:ring-brand-500/15">
                 <textarea
+                  ref={taRef}
                   value={question}
+                  aria-label="输入问题"
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -830,14 +940,18 @@ export default function App() {
                   }}
                   rows={1}
                   placeholder="问点什么…（Enter 发送，Shift+Enter 换行）"
-                  className="max-h-40 min-h-[38px] flex-1 resize-none rounded-field bg-transparent px-3 py-2 text-[14px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300"
+                  className="max-h-40 min-h-[38px] flex-1 resize-none rounded-field bg-transparent px-3 py-2 text-[14px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-400"
                 />
                 <button
-                  onClick={send}
-                  disabled={busy || !question.trim()}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-field bg-brand-600 text-white transition-all hover:bg-brand-700 active:scale-95 disabled:bg-surface-3 disabled:text-ink-300"
+                  onClick={() => (busy ? abortRef.current?.abort() : send())}
+                  disabled={!busy && !question.trim()}
+                  title={busy ? '停止生成' : '发送'}
+                  aria-label={busy ? '停止生成' : '发送'}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-field text-white transition-all active:scale-95 disabled:bg-surface-3 disabled:text-ink-300 ${
+                    busy ? 'bg-ink-500 hover:bg-ink-700' : 'bg-brand-600 hover:bg-brand-700'
+                  }`}
                 >
-                  {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                  {busy ? <Square size={13} fill="currentColor" /> : <Send size={15} />}
                 </button>
               </div>
             </div>
@@ -862,7 +976,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className={`fixed bottom-6 right-6 z-[60] max-w-[380px] rounded-field border px-4 py-2.5 text-[13px] shadow-pop ${
+            className={`pointer-events-none fixed bottom-24 right-6 z-[60] max-w-[380px] rounded-field border px-4 py-2.5 text-[13px] shadow-pop ${
               toast.kind === 'ok'
                 ? 'border-brand-200 bg-brand-50 text-brand-800'
                 : 'border-red-200 bg-red-50 text-red-700'
@@ -887,7 +1001,7 @@ export default function App() {
         confirmLabel="确认删除"
         cancelLabel="取消"
         variant="danger"
-        size="sm"
+        size="md"
       />
     </div>
   )

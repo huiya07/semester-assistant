@@ -45,6 +45,8 @@ router = APIRouter(prefix="/api", tags=["api"])
 
 _store_lock = threading.Lock()
 _write_lock = threading.Lock()
+# 同一时刻只允许一个问答在进行：并发进来既费钱，也会让 Chroma 同时被读
+_ask_lock = threading.Lock()
 _store: Store | None = None
 
 
@@ -183,18 +185,28 @@ def _answer_payload(a) -> dict:
     }
 
 
+BUSY_DETAIL = "上一个问题还在回答中，等它说完再问。"
+
+
 @router.post("/ask")
 def post_ask(body: AskIn) -> dict:
-    store = get_store()
-    started = datetime.now()
-    res = answer(body.question, store=store)
-    payload = _answer_payload(res)
-    payload["elapsed"] = round((datetime.now() - started).total_seconds(), 1)
-    return payload
+    if not _ask_lock.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail=BUSY_DETAIL)
+    try:
+        store = get_store()
+        started = datetime.now()
+        res = answer(body.question, store=store)
+        payload = _answer_payload(res)
+        payload["elapsed"] = round((datetime.now() - started).total_seconds(), 1)
+        return payload
+    finally:
+        _ask_lock.release()
 
 
 @router.post("/ask/stream")
 def post_ask_stream(body: AskIn) -> StreamingResponse:
+    if not _ask_lock.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail=BUSY_DETAIL)
     store = get_store()
 
     def gen():
@@ -210,6 +222,9 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
                 )
                 + "\n\n"
             )
+        finally:
+            # 客户端中途断开时生成器会被 close，这里保证锁一定释放
+            _ask_lock.release()
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
