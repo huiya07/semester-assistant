@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -64,6 +64,10 @@ if (_DIST / "assets").is_dir():
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_fallback(full_path: str):
     """前端单页应用：非 /api 的路径一律交给 index.html（404 也交给它做路由）。"""
+    # /api 下不存在的路径不能落到 index.html —— 前端拿到一段 HTML 去 JSON.parse，
+    # 报的错会让人完全摸不着头脑；这里如实返回 404。
+    if full_path.startswith("api/") or full_path == "health":
+        raise HTTPException(status_code=404, detail="接口不存在。")
     if not _DIST.is_dir():
         return {"detail": "前端尚未构建。开发时请用 Vite dev server（npm run dev）。"}
     target = _DIST / full_path

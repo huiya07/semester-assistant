@@ -129,10 +129,16 @@ def week_monday(d: date) -> date:
 
 
 def _slot_text(c: dict) -> str:
-    if c["start_section"] is not None:
-        return f"第 {c['start_section']}-{c['end_section']} 节"
-    if c["start_time"]:
-        return f"{c['start_time']}-{c['end_time']}"
+    """用 .get 取值：validate_courses 只强制 name/day/weeks，
+    用户导入的课表可能完全没有 start_section 字段，硬取会 KeyError 把整个接口打 500。"""
+    start = c.get("start_section")
+    if start is not None:
+        end = c.get("end_section")
+        return f"第 {start}-{end} 节" if end is not None else f"第 {start} 节"
+    st = c.get("start_time")
+    if st:
+        en = c.get("end_time")
+        return f"{st}-{en}" if en else str(st)
     return "时间待定"
 
 
@@ -159,13 +165,14 @@ def week_view(d: date) -> dict:
             {
                 "name": c["name"],
                 "slot": _slot_text(c),
-                "start_section": c["start_section"],
-                "end_section": c["end_section"],
-                "start_time": c["start_time"],
-                "end_time": c["end_time"],
+                "start_section": c.get("start_section"),
+                "end_section": c.get("end_section"),
+                "start_time": c.get("start_time"),
+                "end_time": c.get("end_time"),
             }
             for c in courses
-            if c["day"] == i + 1 and wn in c["weeks"]
+            # day 可能是数字也可能是字符串（手写 JSON 常见），宽松比较避免整条课静默消失
+            if str(c.get("day")) == str(i + 1) and wn in c.get("weeks", [])
         ]
         days.append(
             {

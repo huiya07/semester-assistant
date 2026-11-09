@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import tempfile
 import threading
@@ -22,6 +23,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 
 from .chunker import chunk_doc
 from .parser import NoTextLayerError, parse_pdf
@@ -128,7 +130,11 @@ def post_upload(file: UploadFile = File(...)) -> dict:
     tmpdir = Path(tempfile.mkdtemp())
     tmp = tmpdir / Path(name).name
     try:
-        tmp.write_bytes(file.file.read())
+        # 上限定在 50 MB：整份读进内存，没有上限时一个超大文件就能打爆进程
+        raw = file.file.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="文件超过 50 MB，请拆分后再上传。")
+        tmp.write_bytes(raw)
         try:
             doc = parse_pdf(tmp)
         except NoTextLayerError as e:
@@ -186,6 +192,7 @@ def _answer_payload(a) -> dict:
 
 
 BUSY_DETAIL = "上一个问题还在回答中，等它说完再问。"
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 
 @router.post("/ask")
@@ -209,6 +216,17 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
         raise HTTPException(status_code=429, detail=BUSY_DETAIL)
     store = get_store()
 
+    # 双保险：客户端中途断开时 Starlette 不保证把生成器消费完，
+    # 只靠 gen 的 finally 会漏锁（实测断开后 9 秒仍 429）。
+    # 因此再用 BackgroundTask 兜底，并用标志位防止重复 release。
+    released = False
+
+    def release() -> None:
+        nonlocal released
+        if not released:
+            released = True
+            _ask_lock.release()
+
     def gen():
         try:
             for ev in answer_stream(body.question, store=store):
@@ -223,8 +241,7 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
                 + "\n\n"
             )
         finally:
-            # 客户端中途断开时生成器会被 close，这里保证锁一定释放
-            _ask_lock.release()
+            release()
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -234,6 +251,7 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",  # 防 nginx 类代理攒包
         },
+        background=BackgroundTask(release),
     )
 
 
@@ -247,10 +265,17 @@ def get_page_count(doc_id: str) -> dict:
     return {"total": page_count(path)}
 
 
+# file_doc_id 的产出固定是 12 位小写十六进制。只放行这个形状，
+# 挡住 "../" 一类拼进文件路径的输入（实测未校验时能落到 SPA 通配路由，行为不可控）。
+_DOC_ID_RE = re.compile(r"^[0-9a-f]{12}$")
+
+
 def _pdf_path(doc_id: str) -> Path | None:
     """按 doc_id 找留底原件。文件名就是 {doc_id}.pdf。"""
     from .config import PDF_STORE_DIR
 
+    if not _DOC_ID_RE.fullmatch(doc_id):
+        return None
     p = PDF_STORE_DIR / f"{doc_id}.pdf"
     return p if p.exists() else None
 
@@ -260,6 +285,8 @@ def get_page(doc_id: str, page_no: int, dpi: int = 110) -> Response:
     path = _pdf_path(doc_id)
     if path is None:
         raise HTTPException(status_code=404, detail="原件已被删除。")
+    # 不限制的话 ?dpi=2000 能把内存和 CPU 打满
+    dpi = max(50, min(int(dpi), 300))
     png = render_page(path, page_no, dpi=dpi)
     if png is None:
         raise HTTPException(status_code=404, detail=f"第 {page_no} 页无法读取。")
