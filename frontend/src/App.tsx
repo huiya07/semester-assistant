@@ -749,9 +749,9 @@ export default function App() {
         </div>
 
         {tab === 'ask' && (
-          <>
+          <div className="relative flex min-h-0 flex-1 flex-col">
             <ScrollFadeContainer orientation="vertical" fadeSize={30} className="flex-1">
-              <div className="mx-auto max-w-[760px] px-6 py-6">
+              <div className="mx-auto max-w-[760px] px-6 pb-44 pt-6">
                 {msgs.length === 0 && (
                   <div className="mx-auto max-w-[560px] py-12">
                     <BookOpen size={28} className="mx-auto mb-4 text-surface-3" />
@@ -813,9 +813,12 @@ export default function App() {
               </div>
             </ScrollFadeContainer>
 
-            {/* 输入框 */}
-            <div className="shrink-0 border-t border-surface-3 bg-surface-0 px-6 py-4">
-              <div className="mx-auto flex max-w-[760px] items-end gap-2">
+            {/* 底部渐隐：让消息自然隐去，衬托悬浮输入框 */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-surface-1 via-surface-1/85 to-transparent" />
+
+            {/* 悬浮玻璃输入框 */}
+            <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-5">
+              <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-card border border-white/70 bg-white/70 p-1.5 shadow-[0_10px_36px_rgba(31,30,29,0.12)] backdrop-blur-xl">
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
@@ -827,18 +830,18 @@ export default function App() {
                   }}
                   rows={1}
                   placeholder="问点什么…（Enter 发送，Shift+Enter 换行）"
-                  className="max-h-40 min-h-[42px] flex-1 resize-none rounded-card border border-surface-3 bg-surface-0 px-3.5 py-2.5 text-[14px] text-ink-900 shadow-soft outline-none transition-all placeholder:text-ink-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10"
+                  className="max-h-40 min-h-[38px] flex-1 resize-none rounded-field bg-transparent px-3 py-2 text-[14px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300"
                 />
                 <button
                   onClick={send}
                   disabled={busy || !question.trim()}
-                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-card bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:bg-surface-3 disabled:text-ink-300"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-field bg-brand-600 text-white transition-all hover:bg-brand-700 active:scale-95 disabled:bg-surface-3 disabled:text-ink-300"
                 >
-                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  {busy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {tab === 'week' && (

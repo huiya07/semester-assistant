@@ -28,6 +28,12 @@ body,
 body {
   @apply bg-surface-1 text-ink-900 font-sans antialiased;
   margin: 0;
+  /* 极淡的径向渐变：给纯色背景一点「纸感」，也让悬浮输入框的玻璃有东西可折射 */
+  background-image:
+    radial-gradient(1100px 620px at 12% -12%, rgba(63, 97, 163, 0.055), transparent 62%),
+    radial-gradient(900px 520px at 102% -4%, rgba(63, 97, 163, 0.035), transparent 58%),
+    radial-gradient(900px 900px at 50% 118%, rgba(120, 140, 180, 0.03), transparent 62%);
+  background-attachment: fixed;
 }
 
 /* 细滚动条，贴近桌面端观感 */
