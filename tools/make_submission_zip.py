@@ -34,8 +34,9 @@ NOTE = """学期助手（Semester Assistant）
   手动三步也可以：
     1. uv sync --default-index https://repo.huaweicloud.com/repository/pypi/simple
     2. copy .env.example .env   然后把 DEEPSEEK_API_KEY 填进去
-    3. uv run streamlit run app.py
-  浏览器打开 http://127.0.0.1:8501
+    3. cd frontend && npm install && npm run build && cd ..
+    4. uv run uvicorn backend.app.main:app --port 8000
+  浏览器打开 http://127.0.0.1:8000
 
   ★ 首次运行需要联网下载：Python 依赖约 1GB + 中文嵌入模型约 100MB。
     · 嵌入模型已默认走国内镜像 hf-mirror.com，无需额外配置。

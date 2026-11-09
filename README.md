@@ -17,7 +17,7 @@
 
 | 层 | 选型 | 说明 |
 |---|---|---|
-| 界面 | Streamlit | 阶段一用来快速验证闭环，单文件 `app.py` |
+| 界面 | React 18 + TypeScript + Tailwind | `frontend/`，组件与设计令牌部分来自 open-claude-ui（MIT） |
 | 文档解析 | PyMuPDF | 逐页提取文本，不做 OCR，扫描件会明确报错 |
 | 切片 | 自实现 | 按页切分不跨页；优先在句末/空行断开（句末结尾率 80%） |
 | 向量库 | Chroma（本地持久化） | 数据落在 `chroma_data/` |
@@ -34,23 +34,31 @@
 .\setup.ps1
 ```
 
-脚本会从华为云镜像安装依赖并直接启动界面。
+脚本依次做三件事：从华为云镜像装后端依赖 → 构建前端 → 启动服务。
 
-### 方式二：手动三步
+### 方式二：手动四步
 
 ```powershell
-# 1. 安装依赖（国内建议加镜像参数，见下）
+# 1. 后端依赖（国内建议加镜像参数，见下）
 uv sync --default-index https://repo.huaweicloud.com/repository/pypi/simple
 
-# 2. 配置环境变量（也可以跳过，启动后在界面里填）
+# 2. 构建前端
+cd frontend
+npm install --registry=https://registry.npmmirror.com
+npm run build
+cd ..
+
+# 3. 配置环境变量（也可以跳过，启动后在界面里填）
 copy .env.example .env
 # 编辑 .env，填入 DEEPSEEK_API_KEY=你的key
 
-# 3. 启动界面
-uv run streamlit run app.py
+# 4. 启动
+uv run uvicorn backend.app.main:app --port 8000
 ```
 
-浏览器打开 http://127.0.0.1:8501 。
+浏览器打开 http://127.0.0.1:8000 。
+
+前端已在开发时热更新：`cd frontend && npm run dev`（5173 端口，自动代理到 8000）。
 
 ### 首次运行会下载什么
 
@@ -118,7 +126,7 @@ uv run python -m backend.cli stats                   # 库内文档与切片数
 ## 目录结构
 
 ```text
-app.py                  Streamlit 界面（真实入口）
+frontend/               React 前端（真实入口；npm run build 产物由 FastAPI 直接服务）
 backend/
   app/
     config.py           读 .env，路径常量

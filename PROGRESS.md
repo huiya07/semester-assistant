@@ -5,7 +5,7 @@
 > 视频相关的流程与参数见 `docs/视频制作记录.md`。
 
 **最后更新：** 2026-11-10
-**当前状态：** 预指导已提交（2026-10-28）。**前端已全量迁移到 React**（2026-11-10），Streamlit 版保留未动。
+**当前状态：** 预指导已提交（2026-10-28）。**前端已全量迁移到 React**（2026-11-10），Streamlit 版已于 2026-11-10 删除。
 **当前阶段：** 最终版冲刺（**2026-11-18 截止**，剩 8 天）
 **下一步优先级：**
 1. 前端评测结论落地（子 agent 评测中）
@@ -21,7 +21,6 @@
 - `embedding.py`：`BGEEmbeddingFunction`（BAAI/bge-small-zh-v1.5，**512 维**，`embed_documents` 不加前缀 / `embed_query` 加指令前缀）、`MODEL_TAG="bge_zh"`、`MODEL_NAME`
 - `store.py`：`Store(path?)`、`upsert(chunks) -> int`、`delete_doc(doc_id)`、`search(query, top_k=5) -> list[Hit{chunk_id, doc_id, doc_name, page_no, text, distance, score}]`、`count()`、`docs()[{doc_id, doc_name, chunks}]`；集合名 `chunks_bge_zh_v1`；数据在 `chroma_data/`（gitignore）
 - `qa.py`：`answer(question, top_k=8, store?) -> Answer{status: ok|not_found|error, text, citations[{index, chunk_id, doc_id, doc_name, page_no, text}], related[], searched[], best_distance}`；`MAX_DISTANCE=0.65`；`NO_ANSWER_MARK`；三层防线（阈值拦截 / prompt 约束 / 引用编号校验）+ 同文档优先 `_select_context`
-- `app.py`：Streamlit 界面，`uv run streamlit run app.py`，两个 tab（资料问答 / 这周该做什么）
 - `data/courses.json`：`{_meta, courses[{name, day, start_section, end_section, weeks[], start_time, end_time}]}`（已脱敏，无教师/教室）
 - `data/assignments.json`：`{_meta, assignments[{id, course, title, due_date}]}`（示例数据，课程名对应真实课表，内容虚构）
 - CLI：`week [YYYY-MM-DD]`、`parse <pdf>`、`index <pdf>`、`search <问题>`、`ask <问题>`、`stats`
@@ -52,8 +51,7 @@
 - **报名信息（UID、姓名、学校、手机号）在 `local/提交信息.md`，该目录已被 `.gitignore` 排除，绝不提交公开仓库，文档里也不要写具体号码**
 - 网盘账号、B 站账号已就绪
 - Python 用 `uv`；venv 与 torch 依赖放 **D 盘**，不占 C 盘
-- **改 `backend/` 下的代码后必须重启 Streamlit 进程**：它的热重载只重跑 `app.py`，不会重新 import 后端模块，
-  否则会出现「类已更新但进程里还是旧类」的 AttributeError（2026-10-25 实际踩过）
+- **改 `backend/` 下的代码后必须重启 uvicorn**：它不会重新 import 后端模块，进程里还是旧类。前端改 `frontend/src/` 则热更新即可
 - 所有脚本用 `pwsh` 执行
 - 本地运行，不部署公网
 - DeepSeek key 放 `.env`，仓库 Public，`.env` 永不提交
