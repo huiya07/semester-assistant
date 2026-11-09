@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   AlertTriangle,
   BookOpen,
@@ -60,19 +63,31 @@ function CitationCard({
   const [showPage, setShowPage] = useState(false)
 
   return (
-    <div className="mt-2 overflow-hidden rounded-field border border-surface-3 bg-surface-0">
+    <div className="mt-2 overflow-hidden rounded-field border border-surface-3 bg-surface-0 transition-shadow hover:shadow-soft">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 transition-colors hover:bg-surface-1"
       >
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <motion.span
+          animate={{ rotate: open ? 0 : 0 }}
+          className="flex"
+        >
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </motion.span>
         <span className="truncate">
           {label} · 《{c.doc_name}》第 {c.page_no} 页
         </span>
       </button>
 
+      <AnimatePresence initial={false}>
       {open && (
-        <div className="border-t border-surface-3 px-3 py-2.5">
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden border-t border-surface-3 px-3 py-2.5"
+        >
           <div className="mb-2 text-[12px] text-ink-400">命中片段</div>
           <p className="whitespace-pre-wrap rounded-field bg-surface-1 px-3 py-2 text-[13px] leading-relaxed text-ink-700">
             {c.text}
@@ -95,15 +110,21 @@ function CitationCard({
               className="mt-2 w-full rounded-field border border-surface-3"
             />
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }
 
 function Message({ m }: { m: Msg }) {
   return (
-    <div className="mb-8">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+      className="mb-8"
+    >
       {/* 用户消息 */}
       <div className="mb-3 flex justify-end">
         <div className="max-w-[75%] rounded-card rounded-br-sm bg-surface-2 px-4 py-2.5 text-[14px] leading-relaxed text-ink-900">
@@ -127,8 +148,8 @@ function Message({ m }: { m: Msg }) {
           )}
 
           {m.text && (
-            <div className="whitespace-pre-wrap text-[14px] leading-[1.75] text-ink-900">
-              {m.text}
+            <div className="md-body text-[14px] leading-[1.75] text-ink-900">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
               {m.status === 'streaming' && <span className="sa-caret" />}
             </div>
           )}
@@ -156,7 +177,7 @@ function Message({ m }: { m: Msg }) {
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -628,7 +649,7 @@ export default function App() {
                   }}
                   rows={1}
                   placeholder="问点什么…（Enter 发送，Shift+Enter 换行）"
-                  className="max-h-40 min-h-[42px] flex-1 resize-none rounded-card border border-surface-3 bg-surface-1 px-3.5 py-2.5 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-400"
+                  className="max-h-40 min-h-[42px] flex-1 resize-none rounded-card border border-surface-3 bg-surface-0 px-3.5 py-2.5 text-[14px] text-ink-900 shadow-soft outline-none transition-all placeholder:text-ink-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10"
                 />
                 <button
                   onClick={send}

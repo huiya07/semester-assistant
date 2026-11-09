@@ -19,9 +19,9 @@ export default {
         },
         surface: {
           0: '#ffffff',
-          1: '#fafaf8',
-          2: '#f4f4f1',
-          3: '#eceae5',
+          1: '#faf9f7',
+          2: '#f3f1ec',
+          3: '#e7e4dd',
         },
         ink: {
           900: '#1f1e1d',

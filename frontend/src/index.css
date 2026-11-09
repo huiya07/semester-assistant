@@ -76,6 +76,50 @@ body {
   animation: sa-breathe 1.2s ease-in-out infinite;
 }
 
+/* Markdown 正文排版 */
+.md-body > :first-child { margin-top: 0; }
+.md-body > :last-child { margin-bottom: 0; }
+.md-body p { margin: 0.5em 0; }
+.md-body ul,
+.md-body ol { margin: 0.5em 0; padding-left: 1.35em; }
+.md-body ul { list-style: disc; }
+.md-body ol { list-style: decimal; }
+.md-body li { margin: 0.2em 0; }
+.md-body li::marker { color: #a8a7a1; }
+.md-body strong { font-weight: 600; color: #1f1e1d; }
+.md-body code {
+  border-radius: 5px;
+  background: #f3f1ec;
+  padding: 0.12em 0.38em;
+  font-size: 0.9em;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+.md-body pre {
+  margin: 0.7em 0;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #f3f1ec;
+  padding: 0.8em 1em;
+}
+.md-body pre code { background: transparent; padding: 0; font-size: 0.86em; }
+.md-body blockquote {
+  margin: 0.6em 0;
+  border-left: 3px solid #e7e4dd;
+  padding-left: 0.9em;
+  color: #6b6a67;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3 { margin: 0.9em 0 0.45em; font-weight: 600; line-height: 1.4; }
+.md-body h1 { font-size: 1.2em; }
+.md-body h2 { font-size: 1.1em; }
+.md-body h3 { font-size: 1.02em; }
+.md-body a { color: #3f61a3; text-decoration: underline; text-underline-offset: 2px; }
+.md-body table { margin: 0.7em 0; border-collapse: collapse; font-size: 0.94em; }
+.md-body th,
+.md-body td { border: 1px solid #e7e4dd; padding: 0.35em 0.6em; }
+.md-body th { background: #faf9f7; font-weight: 600; }
+
 /* 长文档渐隐边缘 */
 .sa-fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent);
