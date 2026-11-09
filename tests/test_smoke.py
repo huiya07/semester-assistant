@@ -174,6 +174,24 @@ def test_ask_refuses_when_absent(client):
     assert d["status"] == "not_found", f"竟然回答了不存在的内容：{d['text'][:80]}"
 
 
+def test_ask_handles_compound_question(client):
+    """复合问题应当部分作答，而不是整体拒答。
+
+    曾经的 prompt 把「不能完整回答」等同于「不回答」：问
+    「四个指标分别是什么、各适合什么场景」，资料里四个定义都有，
+    模型却因为「场景」覆盖不全而整条输出 NO_ANSWER。
+    现在改成「能答多少答多少 + 明说资料未覆盖什么」。
+    """
+    _ensure_sample(client)
+    d = client.post(
+        "/api/ask",
+        json={"question": "均值、中位数、众数、标准差分别是什么，各自适合什么场景？"},
+    ).json()
+    assert d["status"] == "ok", f"复合问题被整体拒答：{d['text'][:80]}"
+    answered = sum(1 for k in ("均值", "中位数", "众数", "标准差") if k in d["text"])
+    assert answered >= 2, f"只答出 {answered} 个指标"
+
+
 def test_ask_stream_emits_events(client):
     _ensure_sample(client)
     seen = []
