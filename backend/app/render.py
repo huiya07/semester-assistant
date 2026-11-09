@@ -37,22 +37,6 @@ def page_count(pdf_path: Path) -> int:
         return 0
 
 
-def page_text(pdf_path: Path, page_no: int) -> str | None:
-    """取该页的完整文本。
-
-    注意：当前界面没有使用它（出处展示改为「片段 + 原页图像」），
-    保留供后续做「整页文本 + 高亮命中」时使用；若长期无引用可删除。
-    """
-    try:
-        doc, page = _open_page(pdf_path, page_no)
-        if doc is None:
-            return None
-        with doc:
-            return page.get_text("text").strip()
-    except Exception:
-        return None
-
-
 def render_page(pdf_path: Path, page_no: int, dpi: int = 110) -> bytes | None:
     """返回该页的 PNG 字节；页码越界或文件缺失时返回 None。"""
     try:
@@ -64,25 +48,3 @@ def render_page(pdf_path: Path, page_no: int, dpi: int = 110) -> bytes | None:
     except Exception:
         return None
 
-
-def split_by_excerpt(full_text: str, excerpt: str) -> tuple[str, str, str] | None:
-    """把整页文本按检索片段切成 (前, 片段, 后)。
-
-    切片来自同一份 PDF 的提取文本，理论上能精确匹配；
-    匹配不上时返回 None，由调用方降级处理。
-    """
-    core = excerpt.strip()
-    if not core:
-        return None
-
-    idx = full_text.find(core)
-    if idx >= 0:
-        return full_text[:idx], core, full_text[idx + len(core) :]
-
-    # 退一步：用开头 60 个字符定位，应对首尾空白差异
-    head = core[:60]
-    idx = full_text.find(head)
-    if idx < 0:
-        return None
-    end = min(len(full_text), idx + len(core))
-    return full_text[:idx], full_text[idx:end], full_text[end:]

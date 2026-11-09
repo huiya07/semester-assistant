@@ -225,12 +225,18 @@ function Sidebar({
   onUpload,
   onDelete,
   uploading,
+  courseNames,
+  uploadCourse,
+  onCourseChange,
 }: {
   docs: DocItem[]
   totalCunks: number
   onUpload: (f: File) => void
   onDelete: (d: DocItem) => void
   uploading: boolean
+  courseNames: string[]
+  uploadCourse: string
+  onCourseChange: (c: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -266,6 +272,22 @@ function Sidebar({
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
           {uploading ? '正在解析并建立索引…' : '添加资料（PDF）'}
         </button>
+
+        <label className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-500">
+          归属课程
+          <select
+            value={uploadCourse}
+            onChange={(e) => onCourseChange(e.target.value)}
+            className="min-w-0 flex-1 rounded-[6px] border border-surface-3 bg-surface-0 px-1.5 py-1 text-[11px] text-ink-700 outline-none focus:border-brand-400"
+          >
+            <option value="">未分类</option>
+            {courseNames.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -283,6 +305,14 @@ function Sidebar({
             <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700" title={d.doc_name}>
               {d.doc_name}
             </span>
+            {d.course && (
+              <span
+                className="shrink-0 rounded bg-brand-50 px-1 py-0.5 text-[10px] text-brand-700"
+                title={`归属课程：${d.course}`}
+              >
+                {d.course.length > 4 ? d.course.slice(0, 4) : d.course}
+              </span>
+            )}
             <span className="shrink-0 text-[11px] text-ink-500">{d.chunks}</span>
             <button
               onClick={() => onDelete(d)}
@@ -657,6 +687,9 @@ export default function App() {
   const [totalChunks, setTotalChunks] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [settings, setSettings] = useState<SettingsPayload | null>(null)
+  const [courseNames, setCourseNames] = useState<string[]>([])
+  const [uploadCourse, setUploadCourse] = useState('')
+  const [askCourse, setAskCourse] = useState('')
 
   const [tab, setTab] = useState<'ask' | 'week'>('ask')
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -702,6 +735,10 @@ export default function App() {
     refreshLibrary().catch(() => {})
     refreshSettings().catch(() => {})
     api.getSemester().then(setWeek).catch(() => {})
+    api
+      .getCourseNames()
+      .then((r) => setCourseNames(r.names))
+      .catch(() => {})
   }, [refreshLibrary, refreshSettings])
 
   useEffect(() => {
@@ -712,9 +749,10 @@ export default function App() {
   const upload = async (f: File) => {
     setUploading(true)
     try {
-      const r = await api.uploadPdf(f)
+      const r = await api.uploadPdf(f, uploadCourse)
       await refreshLibrary()
-      setToast({ kind: 'ok', msg: `已入库 ${r.doc_name}：${r.pages} 页 · ${r.chunks} 个片段` })
+      const tag = uploadCourse ? ` · ${uploadCourse}` : ''
+      setToast({ kind: 'ok', msg: `已入库 ${r.doc_name}：${r.pages} 页 · ${r.chunks} 个片段${tag}` })
     } catch (e) {
       setToast({ kind: 'err', msg: (e as Error).message })
     } finally {
@@ -788,6 +826,7 @@ export default function App() {
           )
         },
         ac.signal,
+        askCourse || undefined,
       )
     } catch (e) {
       const kind = e instanceof ApiError ? e.kind : 'network'
@@ -824,6 +863,9 @@ export default function App() {
         onUpload={upload}
         onDelete={setPendingDelete}
         uploading={uploading}
+        courseNames={courseNames}
+        uploadCourse={uploadCourse}
+        onCourseChange={setUploadCourse}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -926,7 +968,27 @@ export default function App() {
 
             {/* 悬浮玻璃输入框 */}
             <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-5">
-              <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-card border border-white/70 bg-white/70 p-1.5 shadow-[0_10px_36px_rgba(31,30,29,0.12)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-brand-300 focus-within:shadow-[0_10px_36px_rgba(63,97,163,0.20)] focus-within:ring-2 focus-within:ring-brand-500/15">
+              <div className="mx-auto max-w-[760px]">
+              {courseNames.length > 0 && (
+                <div className="mb-1.5 flex items-center gap-1.5 pl-1 text-[11px] text-ink-500">
+                  <Search size={11} />
+                  限定课程
+                  <select
+                    value={askCourse}
+                    onChange={(e) => setAskCourse(e.target.value)}
+                    className="rounded-[6px] border border-surface-3 bg-surface-0/80 px-1.5 py-0.5 text-[11px] text-ink-700 outline-none focus:border-brand-400"
+                  >
+                    <option value="">全部课程</option>
+                    {courseNames.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-ink-400">未分类的资料始终参与检索</span>
+                </div>
+              )}
+              <div className="flex items-end gap-2 rounded-card border border-white/70 bg-white/70 p-1.5 shadow-[0_10px_36px_rgba(31,30,29,0.12)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-brand-300 focus-within:shadow-[0_10px_36px_rgba(63,97,163,0.20)] focus-within:ring-2 focus-within:ring-brand-500/15">
                 <textarea
                   ref={taRef}
                   value={question}
@@ -953,6 +1015,7 @@ export default function App() {
                 >
                   {busy ? <Square size={13} fill="currentColor" /> : <Send size={15} />}
                 </button>
+              </div>
               </div>
             </div>
           </div>

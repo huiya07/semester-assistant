@@ -216,6 +216,54 @@ def test_concurrent_ask_is_rejected(client):
     assert 200 in codes or 429 in codes
 
 
+def _tiny_pdf(text: str) -> bytes:
+    import pymupdf
+
+    d = pymupdf.open()
+    p = d.new_page()
+    p.insert_text((72, 90), text, fontsize=13)
+    b = d.tobytes()
+    d.close()
+    return b
+
+
+def test_course_tag_and_filter(client):
+    """按课程分组检索：标签落库、限定课程时不会串到别的课。"""
+    a = client.post(
+        "/api/library/upload",
+        files={"file": ("co-alpha.pdf", _tiny_pdf("Matrix eigenvalues and diagonalization"), "application/pdf")},
+        data={"course": "课程甲"},
+    ).json()
+    b = client.post(
+        "/api/library/upload",
+        files={"file": ("co-beta.pdf", _tiny_pdf("Grammar present perfect irregular verbs"), "application/pdf")},
+        data={"course": "课程乙"},
+    ).json()
+    try:
+        tags = {d["doc_name"]: d.get("course") for d in client.get("/api/library").json()["docs"]}
+        assert tags["co-alpha.pdf"] == "课程甲"
+        assert tags["co-beta.pdf"] == "课程乙"
+
+        # 限定「课程甲」去问英语内容，绝不能命中 co-beta
+        d = client.post(
+            "/api/ask", json={"question": "grammar irregular verbs", "course": "课程甲"}
+        ).json()
+        srcs = {c["doc_name"] for c in d["citations"]} | {
+            c["doc_name"] for c in d.get("related", [])
+        }
+        assert "co-beta.pdf" not in srcs, f"跨课程串了：{srcs}"
+    finally:
+        for x in (a, b):
+            client.delete(f"/api/library/{x['doc_id']}")
+
+
+def test_course_names_endpoint(client):
+    d = client.get("/api/course-names").json()
+    assert isinstance(d["names"], list)
+    assert d["names"] == sorted(d["names"])
+    assert len(d["names"]) == len(set(d["names"]))
+
+
 # ---------------------------------------------------------------- 学期链路
 
 def test_semester_view(client):

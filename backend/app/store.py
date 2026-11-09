@@ -34,6 +34,7 @@ class Hit:
     text: str
     distance: float
     pdf_file: str = ""  # 相对项目根目录的原件路径，用于「看原页」
+    course: str = ""  # 所属课程；空字符串 = 未分类
 
     @property
     def score(self) -> float:
@@ -54,6 +55,26 @@ class Store:
             metadata={"hnsw:space": "cosine"},
             embedding_function=BGEEmbeddingFunction(),
         )
+        self._ensure_course_field()
+
+    def _ensure_course_field(self) -> int:
+        """给加入课程标签之前入库的历史切片补 `course: ""`（幂等）。
+
+        必须补：Chroma 的 `{"course": ""}` 匹配不到「字段根本不存在」的记录，
+        不补的话用户一旦选了某门课，所有老资料都会瞬间查不到，像是数据丢了。
+        """
+        try:
+            res = self.col.get(include=["metadatas"])
+        except Exception:
+            return 0
+        ids, metas = [], []
+        for i, m in zip(res["ids"], res["metadatas"]):
+            if "course" not in m:
+                ids.append(i)
+                metas.append({**m, "course": ""})
+        if ids:
+            self.col.update(ids=ids, metadatas=metas)
+        return len(ids)
 
     # --- 写入 ---
     def store_pdf(self, src: Path, doc_id: str) -> str:
@@ -64,7 +85,7 @@ class Store:
             shutil.copy2(src, dst)
         return str(dst.relative_to(ROOT)).replace("\\", "/")
 
-    def upsert(self, chunks: list[Chunk], pdf_file: str = "") -> int:
+    def upsert(self, chunks: list[Chunk], pdf_file: str = "", course: str = "") -> int:
         if not chunks:
             return 0
         self.col.upsert(
@@ -77,6 +98,7 @@ class Store:
                     "page_no": c.page_no,
                     "ordinal": c.ordinal,
                     "pdf_file": pdf_file,
+                    "course": course,
                 }
                 for c in chunks
             ],
@@ -92,7 +114,9 @@ class Store:
             return []
         return list(self.col.get(where={"doc_id": doc_id}, include=[])["ids"])
 
-    def replace_chunks(self, doc_id: str, chunks: list[Chunk], pdf_file: str) -> int:
+    def replace_chunks(
+        self, doc_id: str, chunks: list[Chunk], pdf_file: str, course: str = ""
+    ) -> int:
         """整篇替换：**先写新的，成功后再清掉不再存在的旧切片**。
 
         顺序很重要。旧写法是 delete_doc 之后再 upsert，一旦 upsert 抛异常
@@ -100,7 +124,7 @@ class Store:
         现在最坏情况是留下几条陈旧切片，不影响可用性。
         """
         old = set(self.chunk_ids_of(doc_id))
-        n = self.upsert(chunks, pdf_file=pdf_file)
+        n = self.upsert(chunks, pdf_file=pdf_file, course=course)
         stale = old - {c.chunk_id for c in chunks}
         if stale:
             self.col.delete(ids=list(stale))
@@ -113,10 +137,20 @@ class Store:
         leftover.unlink(missing_ok=True)
 
     # --- 读 ---
-    def search(self, query: str, top_k: int = 5) -> list[Hit]:
+    def search(self, query: str, top_k: int = 5, course: str | None = None) -> list[Hit]:
+        """course 有值时只在该课程（以及未分类）的片段里检索。
+
+        刻意把未分类也放进来：已经入库、当初没打标签的资料不能因为
+        用户选了个课程就突然检索不到，那会让人以为什么都丢了。
+        """
         if not query.strip() or self.count() == 0:
             return []
-        res = self.col.query(query_texts=[query], n_results=min(top_k, self.count()))
+        where = {"$or": [{"course": course}, {"course": ""}]} if course else None
+        res = self.col.query(
+            query_texts=[query],
+            n_results=min(top_k, self.count()),
+            where=where,
+        )
         ids = res["ids"][0]
         docs = res["documents"][0]
         metas = res["metadatas"][0]
@@ -130,6 +164,7 @@ class Store:
                 text=d,
                 distance=float(dist),
                 pdf_file=m.get("pdf_file", ""),
+                course=m.get("course", ""),
             )
             for i, d, m, dist in zip(ids, docs, metas, dists)
         ]
@@ -145,6 +180,14 @@ class Store:
         seen: dict[str, dict] = {}
         for m in res["metadatas"]:
             did = m["doc_id"]
-            item = seen.setdefault(did, {"doc_id": did, "doc_name": m.get("doc_name", did), "chunks": 0})
+            item = seen.setdefault(
+                did,
+                {
+                    "doc_id": did,
+                    "doc_name": m.get("doc_name", did),
+                    "chunks": 0,
+                    "course": m.get("course", ""),
+                },
+            )
             item["chunks"] += 1
         return sorted(seen.values(), key=lambda x: x["doc_name"])

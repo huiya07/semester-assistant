@@ -25,6 +25,8 @@ export interface DocItem {
   doc_id: string
   doc_name: string
   chunks: number
+  /** 所属课程；空字符串 = 未分类 */
+  course?: string
 }
 
 export interface LibraryPayload {

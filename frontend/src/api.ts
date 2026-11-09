@@ -112,9 +112,10 @@ export const api = {
   getLibrary: () => reqWithRetry<LibraryPayload>('/library'),
   deleteDoc: (docId: string) =>
     req<{ ok: boolean }>(`/library/${encodeURIComponent(docId)}`, { method: 'DELETE' }),
-  uploadPdf: async (file: File) => {
+  uploadPdf: async (file: File, course = '') => {
     const fd = new FormData()
     fd.append('file', file)
+    if (course) fd.append('course', course)
     return req<{ doc_id: string; doc_name: string; pages: number; chunks: number }>(
       '/library/upload',
       { method: 'POST', body: fd },
@@ -123,8 +124,10 @@ export const api = {
   },
 
   // ---- 问答 ----
-  ask: (question: string) =>
-    req<AnswerPayload>('/ask', { method: 'POST', ...jsonBody({ question }) }),
+  ask: (question: string, course?: string) =>
+    req<AnswerPayload>('/ask', { method: 'POST', ...jsonBody({ question, course: course || null }) }),
+
+  getCourseNames: () => reqWithRetry<{ names: string[] }>('/course-names'),
 
   /**
    * 流式问答。
@@ -135,6 +138,7 @@ export const api = {
     question: string,
     onEvent: (ev: StreamEvent) => void,
     signal?: AbortSignal,
+    course?: string,
   ): Promise<void> {
     return (async () => {
       const ac = new AbortController()
@@ -154,7 +158,7 @@ export const api = {
       try {
         const res = await fetch(BASE + '/ask/stream', {
           method: 'POST',
-          ...jsonBody({ question }),
+          ...jsonBody({ question, course: course || null }),
           signal: ac.signal,
         })
         if (!res.ok || !res.body) {

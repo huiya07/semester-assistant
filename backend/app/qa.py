@@ -15,7 +15,6 @@ from dataclasses import dataclass, field
 
 from openai import OpenAI
 
-from .config import require_api_key
 from .settings import load as load_settings
 from .store import Hit, Store
 
@@ -155,7 +154,9 @@ def _select_context(hits: list[Hit], max_other: int = 2) -> list[Hit]:
     return same + others
 
 
-def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
+def answer(
+    question: str, top_k: int = 8, store: Store | None = None, course: str | None = None
+) -> Answer:
     question = question.strip()
     if not question:
         return Answer(status="not_found", text="问题为空。", searched=["没有发送检索请求"])
@@ -169,7 +170,7 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
             searched=["知识库为空"],
         )
 
-    hits = store.search(question, top_k=top_k)
+    hits = store.search(question, top_k=top_k, course=course)
     if not hits:
         return _not_found([], None)
 
@@ -258,7 +259,9 @@ def answer(question: str, top_k: int = 8, store: Store | None = None) -> Answer:
 _HOLD_CHARS = 12  # 足够覆盖 "NO_ANSWER" 及前导空白
 
 
-def answer_stream(question: str, top_k: int = 8, store: Store | None = None):
+def answer_stream(
+    question: str, top_k: int = 8, store: Store | None = None, course: str | None = None
+):
     """生成器，逐条产出事件字典。"""
     question = question.strip()
     if not question:
@@ -275,7 +278,7 @@ def answer_stream(question: str, top_k: int = 8, store: Store | None = None):
         }
         return
 
-    hits = store.search(question, top_k=top_k)
+    hits = store.search(question, top_k=top_k, course=course)
     if not hits:
         nf = _not_found([], None)
         yield {

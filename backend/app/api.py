@@ -20,7 +20,7 @@ import threading
 from datetime import date, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
@@ -71,6 +71,8 @@ class SettingsIn(BaseModel):
 
 class AskIn(BaseModel):
     question: str = Field(min_length=1)
+    # 可选：限定在哪门课里检索；不传 = 全库
+    course: str | None = None
 
 
 class CoursesIn(BaseModel):
@@ -124,7 +126,7 @@ def get_library() -> dict:
 
 
 @router.post("/library/upload")
-def post_upload(file: UploadFile = File(...)) -> dict:
+def post_upload(file: UploadFile = File(...), course: str = Form("")) -> dict:
     store = get_store()
     name = file.filename or "upload.pdf"
     tmpdir = Path(tempfile.mkdtemp())
@@ -148,12 +150,13 @@ def post_upload(file: UploadFile = File(...)) -> dict:
         with _write_lock:
             pdf_file = store.store_pdf(tmp, doc.doc_id)
             # 先写后清：写入失败时旧数据还在，不会整篇消失
-            n = store.replace_chunks(doc.doc_id, chunk_doc(doc), pdf_file)
+            n = store.replace_chunks(doc.doc_id, chunk_doc(doc), pdf_file, course=course.strip())
         return {
             "doc_id": doc.doc_id,
             "doc_name": doc.filename,
             "pages": doc.page_count,
             "chunks": n,
+            "course": course.strip(),
         }
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -202,7 +205,7 @@ def post_ask(body: AskIn) -> dict:
     try:
         store = get_store()
         started = datetime.now()
-        res = answer(body.question, store=store)
+        res = answer(body.question, store=store, course=body.course or None)
         payload = _answer_payload(res)
         payload["elapsed"] = round((datetime.now() - started).total_seconds(), 1)
         return payload
@@ -229,7 +232,7 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
 
     def gen():
         try:
-            for ev in answer_stream(body.question, store=store):
+            for ev in answer_stream(body.question, store=store, course=body.course or None):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         except Exception as e:  # 兜底：不让生成器异常把连接吊死
             yield (
@@ -312,6 +315,13 @@ def get_semester(day: str | None = None) -> dict:
             status_code=500,
             detail=f"课表数据有误：{type(e).__name__}: {e}",
         ) from e
+
+
+@router.get("/course-names")
+def get_course_names() -> dict:
+    """给前端的课程下拉用：课表里出现过的课程名，去重排序。"""
+    names = sorted({c.get("name", "").strip() for c in load_courses() if c.get("name")})
+    return {"names": [n for n in names if n]}
 
 
 @router.get("/semester/meta")
