@@ -26,7 +26,7 @@
 
 ## 快速开始
 
-前置：**Python 3.12+**、[uv](https://docs.astral.sh/uv/)。
+前置：**Python 3.12+**、[uv](https://docs.astral.sh/uv/)、**Node.js 18+**（构建前端需要）。
 
 ### 方式一：一键脚本（推荐，国内网络已加速）
 
@@ -68,6 +68,7 @@ uv run uvicorn backend.app.main:app --port 8000
 |---|---|---|---|
 | Python 依赖（`uv sync`） | 约 1 GB | 官方源在这里 **403 拒绝** | 用 `--default-index` 走华为云，实测 7.5 MB/s |
 | 中文嵌入模型 `bge-small-zh-v1.5` | 约 100 MB | **不能直连** | 代码已默认走 `hf-mirror.com` 镜像，无需额外配置 |
+| 前端依赖（`npm install`） | 约 150 MB | 可以 | 国内建议 `--registry=https://registry.npmmirror.com` |
 | DeepSeek API | — | 可以 | 需要自行申请 API Key |
 
 镜像源实测（同一台机器，2026-10-26）：
@@ -116,8 +117,8 @@ curl.exe -L -o backend\samples\attention.pdf "https://arxiv.org/pdf/1706.03762v7
 ```powershell
 uv run python -m backend.cli week                    # 本周课表 + 到期作业
 uv run python -m backend.cli week 2026-10-30         # 指定日期所在周
-uv run python -m backend.cli parse backend\samples\attention.pdf   # 解析并切片，打印统计
-uv run python -m backend.cli index backend\samples\attention.pdf   # 入库
+uv run python -m backend.cli parse backend\samples\sample-lecture-notes.pdf   # 解析并切片，打印统计
+uv run python -m backend.cli index backend\samples\sample-lecture-notes.pdf   # 入库
 uv run python -m backend.cli search "注意力头数量"      # 只看检索结果
 uv run python -m backend.cli ask "有多少个注意力头"      # 完整问答（会调用大模型）
 uv run python -m backend.cli stats                   # 库内文档与切片数
@@ -136,7 +137,10 @@ backend/
     store.py            Chroma 读写与检索
     qa.py               检索 → 生成 → 引用校验（三层抗幻觉）
     semester.py         周次计算与周视图
-    main.py             FastAPI 入口（目前只有 /health）
+    api.py              REST 接口层（14 个端点：设置/资料库/问答/流式/原页/学期）
+    main.py             FastAPI 入口，挂载 api 路由与前端静态文件
+    render.py           PDF 页渲染为 PNG（出处对照用）
+    settings.py         运行期模型配置（界面保存优先于 .env）
   cli.py                命令行验收工具
   data/
     courses.json        课表（已脱敏，无教师/教室）
@@ -148,7 +152,8 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 ## 抗幻觉的三层设计
 
 1. **检索层**：最佳距离 > 0.65 直接返回「没检索到」，不调用大模型
-2. **提示层**：system prompt 约束「只用给定片段、每条结论标 [n]、没有依据只输出 NO_ANSWER」
+2. **提示层**：system prompt 约束「只用给定片段、每条结论标 [n]」；能答多少答多少，
+   资料未覆盖的方面单独标注，完全无关才输出 `NO_ANSWER`
 3. **后处理层**：正则校验答案里的 `[n]` 是否真实存在；引用全部越界即判定为编造，整体降级
 
 ## 数据说明
@@ -162,7 +167,7 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 两条冒烟测试，覆盖后端接口与前端交互：
 
 ```bash
-# 后端（17 项，约 5 秒）
+# 后端（20 项，约 6 秒）
 # 前置：uv run uvicorn backend.app.main:app --port 8000
 uv run pytest tests/test_smoke.py -v
 
@@ -179,7 +184,7 @@ python -X utf8 tests/ui_smoke.py
 
 前端部分组件与设计令牌来自 [Caho1/open-claude-ui](https://github.com/Caho1/open-claude-ui)（MIT License）：
 
-- `frontend/src/components/cds/` —— `ConfirmationDialog`、`CdsButton`、`ScrollFadeContainer`、`StatusIndicators`、`ThinkingAccordion`
+- `frontend/src/components/cds/` —— `ConfirmationDialog`、`CdsButton`、`ScrollFadeContainer`、`StatusIndicators`
 - `frontend/src/styles/cds-theme.css` —— 183 个设计令牌
 
 使用方式为**按原样引入后替换配色体系**：CDS 原有的陶土橙（`--cds-clay: #d97757`）已整体映射为本项目的靛蓝主色，

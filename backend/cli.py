@@ -15,6 +15,15 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
+# 中文 Windows 的控制台默认 GBK，直接 print 中文会抛 UnicodeEncodeError，
+# 用户看到的是一屏 Traceback —— 这是复现时的第一道坎，入口处就修掉。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 from .app.chunker import chunk_doc
 from .app.parser import NoTextLayerError, parse_pdf
 from .app.semester import week_view
