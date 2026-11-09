@@ -149,6 +149,24 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 - 作业 `assignments.json` 是示例数据，不包含任何真实个人信息
 - `.env`、`chroma_data/`、`local/` 均不进入版本库
 
+## 自测
+
+两条冒烟测试，覆盖后端接口与前端交互：
+
+```bash
+# 后端（17 项，约 5 秒）
+# 前置：uv run uvicorn backend.app.main:app --port 8000
+uv run pytest tests/test_smoke.py -v
+
+# 前端端到端（14 项，Playwright 驱动系统 Edge）
+# 前置：后端已启动；Playwright 装在全局 Python
+
+python -X utf8 tests/ui_smoke.py
+```
+
+后端测试不依赖任何用户数据：测试用的 PDF 由 PyMuPDF 现场生成、用完删除，
+问答部分会幂等地上传仓库自带的示例讲义（内容哈希固定，不会产生副本）。
+
 ## 第三方组件与致谢
 
 前端部分组件与设计令牌来自 [Caho1/open-claude-ui](https://github.com/Caho1/open-claude-ui)（MIT License）：

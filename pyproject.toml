@@ -26,3 +26,8 @@ default = true
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
