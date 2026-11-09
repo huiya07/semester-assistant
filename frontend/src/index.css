@@ -4,6 +4,19 @@
 
 :root {
   color-scheme: light;
+
+  /* 覆盖 CDS 的表面色为暖白体系（原值偏冷灰） */
+  --cds-surface-0: #ffffff;
+  --cds-surface-1: #faf9f7;
+  --cds-surface-2: #f3f1ec;
+  --cds-surface-3: #e7e4dd;
+  --cds-surface-popover: #ffffff;
+
+  /* 主色：靛蓝，替换 CDS 默认的陶土橙 */
+  --brand: #3f61a3;
+  --cds-clay: #3f61a3;
+  --cds-clay-hover: #344d84;
+  --cds-clay-light: #eef2f9;
 }
 
 html,

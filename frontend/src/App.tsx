@@ -17,10 +17,13 @@ import {
   X,
 } from 'lucide-react'
 import { api } from './api'
+import { ConfirmationDialog } from './components/cds/ConfirmationDialog'
+import { QuietDotsWave } from './components/cds/StatusIndicators'
 import type {
   AnswerStatus,
   Citation,
   DocItem,
+  SemesterMeta,
   SettingsPayload,
   WeekView,
 } from './types'
@@ -139,12 +142,7 @@ function Message({ m }: { m: Msg }) {
         </div>
         <div className="min-w-0 flex-1">
           {m.status === 'streaming' && !m.text && (
-            <div className="flex items-center gap-2 py-1">
-              <span className="sa-dot h-1.5 w-1.5 rounded-full bg-brand-500" />
-              <span className="sa-dot h-1.5 w-1.5 rounded-full bg-brand-500" style={{ animationDelay: '0.2s' }} />
-              <span className="sa-dot h-1.5 w-1.5 rounded-full bg-brand-500" style={{ animationDelay: '0.4s' }} />
-              <span className="ml-1 text-[13px] text-ink-400">检索资料中…</span>
-            </div>
+            <QuietDotsWave label="检索资料中…" />
           )}
 
           {m.text && (
@@ -450,6 +448,128 @@ function WeekPanel({ view }: { view: WeekView | null }) {
   )
 }
 
+// ---------------------------------------------------------------- 课表导入
+
+function ImportPanel({ onChanged }: { onChanged: () => void }) {
+  const [meta, setMeta] = useState<SemesterMeta | null>(null)
+  const [open, setOpen] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const cRef = useRef<HTMLInputElement>(null)
+  const aRef = useRef<HTMLInputElement>(null)
+
+  const refresh = useCallback(async () => {
+    setMeta(await api.getSemesterMeta())
+  }, [])
+
+  useEffect(() => {
+    refresh().catch(() => {})
+  }, [refresh])
+
+  const uploadOne = async (file: File, kind: 'courses' | 'assignments') => {
+    setBusy(true)
+    try {
+      const text = await file.text()
+      let data = JSON.parse(text)
+      if (Array.isArray(data)) data = { [kind]: data }
+      const list = data?.[kind]
+      if (!Array.isArray(list)) throw new Error(`${file.name} 缺少 ${kind} 数组`)
+      const r =
+        kind === 'courses' ? await api.putCourses(list) : await api.putAssignments(list)
+      setMsg(`已导入 ${file.name}：${r.count} 条`)
+      await refresh()
+      onChanged()
+    } catch (e) {
+      setMsg(`导入失败：${(e as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-8 rounded-card border border-surface-3 bg-surface-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] text-ink-500 hover:bg-surface-1"
+      >
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        📥 导入 / 管理课表与作业
+      </button>
+
+      {open && (
+        <div className="space-y-3 border-t border-surface-3 px-4 py-3">
+          <p className="text-[12px] text-ink-500">
+            当前课表：<strong>{meta?.courses ?? '—'}</strong> 条（
+            {meta?.custom_courses ? '自定义' : '示例'}）　·　当前作业：
+            <strong>{meta?.assignments ?? '—'}</strong> 条（
+            {meta?.custom_assignments ? '自定义' : '示例'}）
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={cRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) uploadOne(f, 'courses')
+                e.target.value = ''
+              }}
+            />
+            <input
+              ref={aRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) uploadOne(f, 'assignments')
+                e.target.value = ''
+              }}
+            />
+            <button
+              onClick={() => cRef.current?.click()}
+              disabled={busy}
+              className="rounded-field border border-surface-3 px-3 py-1.5 text-[13px] text-ink-600 hover:bg-surface-1 disabled:opacity-60"
+            >
+              导入课表 JSON
+            </button>
+            <button
+              onClick={() => aRef.current?.click()}
+              disabled={busy}
+              className="rounded-field border border-surface-3 px-3 py-1.5 text-[13px] text-ink-600 hover:bg-surface-1 disabled:opacity-60"
+            >
+              导入作业 JSON
+            </button>
+            {(meta?.custom_courses || meta?.custom_assignments) && (
+              <button
+                onClick={async () => {
+                  if (!confirm('要用示例数据替换当前课表与作业吗？已导入的自定义数据会被删除，且无法撤销。')) return
+                  const r = await api.resetSemester()
+                  setMsg(r.message)
+                  await refresh()
+                  onChanged()
+                }}
+                className="rounded-field border border-red-200 px-3 py-1.5 text-[13px] text-red-600 hover:bg-red-50"
+              >
+                恢复默认
+              </button>
+            )}
+            {msg && <span className="text-[12px] text-ink-400">{msg}</span>}
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-ink-300">
+            课表格式：<code className="rounded bg-surface-2 px-1">{'{ "courses": [ {"name","day","start_section","end_section","weeks"} ] }'}</code>
+            <br />
+            作业格式：<code className="rounded bg-surface-2 px-1">{'{ "assignments": [ {"id","course","title","due_date"} ] }'}</code>
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- 主应用
 
 export default function App() {
@@ -476,6 +596,10 @@ export default function App() {
 
   const refreshSettings = useCallback(async () => {
     setSettings(await api.getSettings())
+  }, [])
+
+  const refreshWeek = useCallback(async () => {
+    setWeek(await api.getSemester())
   }, [])
 
   useEffect(() => {
@@ -666,46 +790,29 @@ export default function App() {
         {tab === 'week' && (
           <div className="flex-1 overflow-y-auto">
             <WeekPanel view={week} />
+            <div className="mx-auto max-w-[1100px] px-6 pb-10">
+              <ImportPanel onChanged={refreshWeek} />
+            </div>
           </div>
         )}
       </main>
 
-      {/* 删除确认 */}
-      {pendingDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/20 backdrop-blur-[2px]">
-          <div className="w-[380px] rounded-card bg-surface-0 p-5 shadow-pop">
-            <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-ink-900">确认删除</h3>
-              <button
-                onClick={() => setPendingDelete(null)}
-                className="rounded p-1 text-ink-300 hover:bg-surface-1"
-              >
-                <X size={15} />
-              </button>
-            </div>
-            <p className="mb-1 text-[13px] text-ink-700">
-              要删除 <strong>《{pendingDelete.doc_name}》</strong> 吗？
-            </p>
-            <p className="mb-4 text-[12px] text-ink-400">
-              将删除 {pendingDelete.chunks} 个检索片段与留底的原件。此操作无法撤销。
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setPendingDelete(null)}
-                className="rounded-field border border-surface-3 px-3.5 py-1.5 text-[13px] text-ink-600 hover:bg-surface-1"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => removeDoc(pendingDelete)}
-                className="rounded-field bg-red-600 px-3.5 py-1.5 text-[13px] text-white hover:bg-red-700"
-              >
-                确认删除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 删除确认（CDS ConfirmationDialog） */}
+      <ConfirmationDialog
+        isOpen={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && removeDoc(pendingDelete)}
+        title="确认删除"
+        description={
+          pendingDelete
+            ? `要删除《${pendingDelete.doc_name}》吗？将删除 ${pendingDelete.chunks} 个检索片段与留底的原件。此操作无法撤销。`
+            : ''
+        }
+        confirmLabel="确认删除"
+        cancelLabel="取消"
+        variant="danger"
+        size="sm"
+      />
     </div>
   )
 }
