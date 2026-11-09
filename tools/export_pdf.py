@@ -98,6 +98,10 @@ def main() -> None:
         ],
         capture_output=True,
         text=True,
+        # 中文 Windows 下 text=True 会按 GBK 解码 Edge 的输出，
+        # Edge 只要吐一个 UTF-8 字节就抛 UnicodeDecodeError
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
     )
     if not out.exists():
