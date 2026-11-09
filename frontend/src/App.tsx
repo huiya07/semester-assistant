@@ -17,7 +17,9 @@ import {
   X,
 } from 'lucide-react'
 import { api } from './api'
+import { CdsButton } from './components/cds/CdsButton'
 import { ConfirmationDialog } from './components/cds/ConfirmationDialog'
+import { ScrollFadeContainer } from './components/cds/ScrollFadeContainer'
 import { QuietDotsWave } from './components/cds/StatusIndicators'
 import type {
   AnswerStatus,
@@ -528,22 +530,16 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
                 e.target.value = ''
               }}
             />
-            <button
-              onClick={() => cRef.current?.click()}
-              disabled={busy}
-              className="rounded-field border border-surface-3 px-3 py-1.5 text-[13px] text-ink-600 hover:bg-surface-1 disabled:opacity-60"
-            >
+            <CdsButton variant="outline" size="sm" onClick={() => cRef.current?.click()} disabled={busy}>
               导入课表 JSON
-            </button>
-            <button
-              onClick={() => aRef.current?.click()}
-              disabled={busy}
-              className="rounded-field border border-surface-3 px-3 py-1.5 text-[13px] text-ink-600 hover:bg-surface-1 disabled:opacity-60"
-            >
+            </CdsButton>
+            <CdsButton variant="outline" size="sm" onClick={() => aRef.current?.click()} disabled={busy}>
               导入作业 JSON
-            </button>
+            </CdsButton>
             {(meta?.custom_courses || meta?.custom_assignments) && (
-              <button
+              <CdsButton
+                variant="danger"
+                size="sm"
                 onClick={async () => {
                   if (!confirm('要用示例数据替换当前课表与作业吗？已导入的自定义数据会被删除，且无法撤销。')) return
                   const r = await api.resetSemester()
@@ -551,10 +547,9 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
                   await refresh()
                   onChanged()
                 }}
-                className="rounded-field border border-red-200 px-3 py-1.5 text-[13px] text-red-600 hover:bg-red-50"
               >
                 恢复默认
-              </button>
+              </CdsButton>
             )}
             {msg && <span className="text-[12px] text-ink-400">{msg}</span>}
           </div>
@@ -593,7 +588,7 @@ export default function App() {
   }, [toast])
 
   const abortRef = useRef<AbortController | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
 
   const refreshLibrary = useCallback(async () => {
     const r = await api.getLibrary()
@@ -616,7 +611,8 @@ export default function App() {
   }, [refreshLibrary, refreshSettings])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    // 流式过程中每来一段都跟到底部；用锚点而不是容器 ref，兼容 CDS 的滚动容器
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [msgs])
 
   const upload = async (f: File) => {
@@ -754,7 +750,7 @@ export default function App() {
 
         {tab === 'ask' && (
           <>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto">
+            <ScrollFadeContainer orientation="vertical" fadeSize={30} className="flex-1">
               <div className="mx-auto max-w-[760px] px-6 py-6">
                 {msgs.length === 0 && (
                   <div className="mx-auto max-w-[560px] py-12">
@@ -813,8 +809,9 @@ export default function App() {
                 {msgs.map((m) => (
                   <Message key={m.id} m={m} />
                 ))}
+                <div ref={endRef} />
               </div>
-            </div>
+            </ScrollFadeContainer>
 
             {/* 输入框 */}
             <div className="shrink-0 border-t border-surface-3 bg-surface-0 px-6 py-4">
