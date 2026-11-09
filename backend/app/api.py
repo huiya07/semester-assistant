@@ -146,9 +146,9 @@ def post_upload(file: UploadFile = File(...)) -> dict:
             ) from e
 
         with _write_lock:
-            store.delete_doc(doc.doc_id)
             pdf_file = store.store_pdf(tmp, doc.doc_id)
-            n = store.upsert(chunk_doc(doc), pdf_file=pdf_file)
+            # 先写后清：写入失败时旧数据还在，不会整篇消失
+            n = store.replace_chunks(doc.doc_id, chunk_doc(doc), pdf_file)
         return {
             "doc_id": doc.doc_id,
             "doc_name": doc.filename,

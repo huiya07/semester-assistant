@@ -87,6 +87,25 @@ class Store:
         """删除某篇文档的全部切片。切片参数变了要重入库时用。"""
         self.col.delete(where={"doc_id": doc_id})
 
+    def chunk_ids_of(self, doc_id: str) -> list[str]:
+        if self.count() == 0:
+            return []
+        return list(self.col.get(where={"doc_id": doc_id}, include=[])["ids"])
+
+    def replace_chunks(self, doc_id: str, chunks: list[Chunk], pdf_file: str) -> int:
+        """整篇替换：**先写新的，成功后再清掉不再存在的旧切片**。
+
+        顺序很重要。旧写法是 delete_doc 之后再 upsert，一旦 upsert 抛异常
+        （磁盘满、Chroma 异常），这篇文档就整个消失了，连原页都点不开。
+        现在最坏情况是留下几条陈旧切片，不影响可用性。
+        """
+        old = set(self.chunk_ids_of(doc_id))
+        n = self.upsert(chunks, pdf_file=pdf_file)
+        stale = old - {c.chunk_id for c in chunks}
+        if stale:
+            self.col.delete(ids=list(stale))
+        return n
+
     def purge_document(self, doc_id: str) -> None:
         """彻底删除一篇文档：向量切片 + 留底的原件。"""
         self.delete_doc(doc_id)
