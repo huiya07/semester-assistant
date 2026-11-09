@@ -149,6 +149,16 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 - 作业 `assignments.json` 是示例数据，不包含任何真实个人信息
 - `.env`、`chroma_data/`、`local/` 均不进入版本库
 
+## 第三方组件与致谢
+
+前端部分组件与设计令牌来自 [Caho1/open-claude-ui](https://github.com/Caho1/open-claude-ui)（MIT License）：
+
+- `frontend/src/components/cds/` —— `ConfirmationDialog`、`CdsButton`、`ScrollFadeContainer`、`StatusIndicators`、`ThinkingAccordion`
+- `frontend/src/styles/cds-theme.css` —— 183 个设计令牌
+
+使用方式为**按原样引入后替换配色体系**：CDS 原有的陶土橙（`--cds-clay: #d97757`）已整体映射为本项目的靛蓝主色，
+不构成对 Claude Desktop 视觉的复制。原项目的 MIT 许可与版权声明随源码保留。
+
 ## License
 
 个人参赛作品，仅供评审与学习参考。

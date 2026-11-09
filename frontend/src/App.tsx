@@ -584,6 +584,13 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [week, setWeek] = useState<WeekView | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DocItem | null>(null)
+  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4200)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -617,18 +624,24 @@ export default function App() {
     try {
       const r = await api.uploadPdf(f)
       await refreshLibrary()
-      console.info(`已入库 ${r.doc_name}：${r.pages} 页 / ${r.chunks} 片段`)
+      setToast({ kind: 'ok', msg: `已入库 ${r.doc_name}：${r.pages} 页 · ${r.chunks} 个片段` })
     } catch (e) {
-      alert((e as Error).message)
+      setToast({ kind: 'err', msg: (e as Error).message })
     } finally {
       setUploading(false)
     }
   }
 
   const removeDoc = async (d: DocItem) => {
-    await api.deleteDoc(d.doc_id)
-    setPendingDelete(null)
-    await refreshLibrary()
+    try {
+      await api.deleteDoc(d.doc_id)
+      await refreshLibrary()
+      setToast({ kind: 'ok', msg: `已删除《${d.doc_name}》` })
+    } catch (e) {
+      setToast({ kind: 'err', msg: (e as Error).message })
+    } finally {
+      setPendingDelete(null)
+    }
   }
 
   const send = async () => {
@@ -744,13 +757,57 @@ export default function App() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
               <div className="mx-auto max-w-[760px] px-6 py-6">
                 {msgs.length === 0 && (
-                  <div className="py-16 text-center">
-                    <BookOpen size={32} className="mx-auto mb-3 text-surface-3" />
-                    <p className="text-[14px] text-ink-500">
-                      {docs.length === 0
-                        ? '先在左侧添加一份 PDF 资料'
-                        : '在下方提问，每条结论都会标注页码出处'}
-                    </p>
+                  <div className="mx-auto max-w-[560px] py-12">
+                    <BookOpen size={28} className="mx-auto mb-4 text-surface-3" />
+
+                    {docs.length === 0 ? (
+                      <>
+                        <h2 className="mb-5 text-center text-[15px] font-semibold text-ink-900">
+                          三步就能用起来
+                        </h2>
+                        <ol className="space-y-3.5">
+                          {[
+                            ['加一份资料', '左侧「添加资料」上传 PDF，自动解析并建立索引'],
+                            ['提问', '问资料里的内容，每个回答都会标出 [1] 这样的出处'],
+                            ['核对', '点开出处能看到命中原文，还可以展开 PDF 原页对照'],
+                          ].map(([t, d], i) => (
+                            <li key={t} className="flex gap-3">
+                              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-medium text-brand-700">
+                                {i + 1}
+                              </span>
+                              <div>
+                                <div className="text-[13px] font-medium text-ink-900">{t}</div>
+                                <div className="mt-0.5 text-[12px] leading-relaxed text-ink-400">
+                                  {d}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                        <p className="mt-6 rounded-field border border-surface-3 bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-500">
+                          资料里没有的内容，它会直接说找不到，并把最接近的原文摆出来——不会编。
+                        </p>
+                      </>
+                    ) : (
+                      <div className="text-center">
+                        <h2 className="mb-3 text-[15px] font-semibold text-ink-900">试试问：</h2>
+                        <div className="inline-flex flex-col items-start gap-2">
+                          {[
+                            '这份资料讲了什么？',
+                            `《${docs[0].doc_name}》的第 1 页说了什么？`,
+                            '这份资料里没有的内容（看它会不会老实说找不到）',
+                          ].map((q) => (
+                            <button
+                              key={q}
+                              onClick={() => setQuestion(q)}
+                              className="rounded-field border border-surface-3 bg-surface-0 px-3 py-1.5 text-left text-[13px] text-ink-600 transition-colors hover:border-brand-300 hover:text-brand-700"
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {msgs.map((m) => (
@@ -796,6 +853,25 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* 轻提示 */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className={`fixed bottom-6 right-6 z-[60] max-w-[380px] rounded-field border px-4 py-2.5 text-[13px] shadow-pop ${
+              toast.kind === 'ok'
+                ? 'border-brand-200 bg-brand-50 text-brand-800'
+                : 'border-red-200 bg-red-50 text-red-700'
+            }`}
+          >
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 删除确认（CDS ConfirmationDialog） */}
       <ConfirmationDialog
