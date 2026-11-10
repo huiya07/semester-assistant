@@ -60,6 +60,12 @@ uv run uvicorn backend.app.main:app --port 8000
 
 浏览器打开 http://127.0.0.1:8000 。
 
+> **如果 `uv run` 每次启动都在重建 venv**（输出 `Creating virtual environment` / `Installed N packages`），
+> 说明机器上有多个 Python 版本、uv 选错了。两个办法：
+> ① 直接用 venv 里的解释器：`.venv\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000`
+> ② 或加 `--no-sync`：`uv run --no-sync uvicorn backend.app.main:app --port 8000`
+> 另外，**服务运行期间再执行 `uv run` 会报「拒绝访问」**（venv 被占用），跑命令行验收前先停服务。
+
 前端已在开发时热更新：`cd frontend && npm run dev`（5173 端口，自动代理到 8000）。
 
 ### 首次运行会下载什么
@@ -82,7 +88,9 @@ uv run uvicorn backend.app.main:app --port 8000
 | 清华 TUNA | ❌ 本机连续失败（HTTP 000） |
 | 官方 PyPI | ⚠️ 索引可达，但 wheel 下载 **403** |
 
-依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1 GB。首次启动加载模型需要 10–30 秒，界面会显示「正在加载嵌入模型…」。
+依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1 GB。
+
+启动后**第一次提问**才加载嵌入模型（懒加载，约 10–30 秒），期间页面正常显示，第一条回答会明显慢一些。模型加载完就常驻内存，后续提问不再等。
 
 如果想让模型走官方源（海外网络），先设置环境变量再启动：
 
@@ -117,7 +125,7 @@ curl.exe -L -o backend\samples\attention.pdf "https://arxiv.org/pdf/1706.03762v7
 ## 命令行验收（可选，不依赖界面）
 
 ```powershell
-uv run python -m backend.cli week                    # 本周课表 + 到期作业
+uv run python -m backend.cli week                    # 本周课表 + 到期作业（服务需先停）
 uv run python -m backend.cli week 2026-10-30         # 指定日期所在周
 uv run python -m backend.cli parse backend\samples\sample-lecture-notes.pdf   # 解析并切片，打印统计
 uv run python -m backend.cli index backend\samples\sample-lecture-notes.pdf   # 入库

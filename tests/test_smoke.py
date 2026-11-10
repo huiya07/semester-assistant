@@ -21,7 +21,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-BASE = "http://127.0.0.1:8000"
+import os
+
+BASE = os.getenv("SA_BASE", "http://127.0.0.1:8000")
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = ROOT / "backend" / "samples" / "sample-lecture-notes.pdf"
 

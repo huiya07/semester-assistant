@@ -45,10 +45,20 @@ app.include_router(api_router)
 
 @app.get("/health")
 def health() -> dict:
-    """存活检查。不因为缺 API key 而失败，只如实报告状态。"""
+    """存活检查。不因为缺 API key 而失败，只如实报告状态。
+
+    llm_configured 要把界面保存的配置也算进来 —— 只看 .env 会误报 false，
+    而实际在「模型配置」里填过 key 的话问答是能用的。
+    """
+    from .settings import load as load_settings
+
+    try:
+        configured = load_settings().ready
+    except Exception:
+        configured = bool(DEEPSEEK_API_KEY)
     return {
         "status": "ok",
-        "llm_configured": bool(DEEPSEEK_API_KEY),
+        "llm_configured": configured,
     }
 
 
