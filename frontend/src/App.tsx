@@ -158,8 +158,9 @@ function CitationCard({
 }
 
 function Message({ m }: { m: Msg }) {
-  // 长回答折叠：流式过程中不折（内容还在长），结束后按实际高度决定
-  const [expanded, setExpanded] = useState(false)
+  // 长回答默认全文显示，只是给一个「收起」的选项；
+  // 流式过程中不提供折叠（内容还在长），结束后按实际高度决定要不要给按钮
+  const [collapsed, setCollapsed] = useState(false)
   const [overflows, setOverflows] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
 
@@ -199,10 +200,10 @@ function Message({ m }: { m: Msg }) {
               <div
                 ref={bodyRef}
                 className={`md-body text-[14px] leading-[1.75] text-ink-900 ${
-                  overflows && !expanded ? 'max-h-[280px] overflow-hidden' : ''
+                  overflows && collapsed ? 'max-h-[280px] overflow-hidden' : ''
                 }`}
                 style={
-                  overflows && !expanded
+                  overflows && collapsed
                     ? { maskImage: 'linear-gradient(to bottom, #000 72%, transparent)' }
                     : undefined
                 }
@@ -212,11 +213,11 @@ function Message({ m }: { m: Msg }) {
               </div>
               {overflows && (
                 <button
-                  onClick={() => setExpanded((v) => !v)}
+                  onClick={() => setCollapsed((v) => !v)}
                   className="mt-1 flex items-center gap-1 text-[12px] text-brand-600 transition-colors hover:text-brand-700"
                 >
-                  {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  {expanded ? '收起' : '展开全文'}
+                  {collapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                  {collapsed ? '展开全文' : '收起'}
                 </button>
               )}
             </>
