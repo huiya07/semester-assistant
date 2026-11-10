@@ -590,84 +590,157 @@ function WeekPanel({ view }: { view: WeekView | null }) {
 
 const GUIDE_KEY = 'sa_guide_seen_v1'
 
-/** 用白色描边圈出指定元素；四周不挖洞，只靠遮罩压暗 + 描边突出。 */
-function GuideRing({ rect, index }: { rect: DOMRect; index: number }) {
+interface GuideStep {
+  sel: string
+  title: string
+  desc: string
+  place: 'right' | 'top' | 'bottom'
+}
+
+const GUIDE_STEPS: GuideStep[] = [
+  {
+    sel: '[data-guide="upload"]',
+    title: '先添加一份课程资料',
+    desc: '支持带文本层的 PDF。可以先从仓库自带的示例讲义试起，也可以选个归属课程，之后提问时能按课程筛选。',
+    place: 'right',
+  },
+  {
+    sel: '[data-guide="input"]',
+    title: '在这里提问',
+    desc: '每个答案都会标注页码，点开能对照原文；资料里没有的内容，它会直接说找不到，不会编。',
+    place: 'top',
+  },
+  {
+    sel: '[data-guide="week"]',
+    title: '顺便看这周的安排',
+    desc: '课表和到期作业都在这一页，红色的是今天要交的。点作业可以看完整标题。',
+    place: 'bottom',
+  },
+]
+
+function GuideRing({ rect }: { rect: DOMRect }) {
   return (
-    <>
-      <div
-        className="pointer-events-none absolute rounded-field ring-2 ring-white/95 transition-all"
-        style={{
-          top: rect.top - 6,
-          left: rect.left - 6,
-          width: rect.width + 12,
-          height: rect.height + 12,
-          boxShadow: '0 0 0 1px rgba(31,30,29,0.15), 0 8px 24px rgba(31,30,29,0.18)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-ink-900 shadow"
-        style={{ top: rect.top - 16, left: rect.left - 16 }}
-      >
-        {index}
+    <div
+      className="pointer-events-none absolute rounded-field transition-all duration-300"
+      style={{
+        top: rect.top - 6,
+        left: rect.left - 6,
+        width: rect.width + 12,
+        height: rect.height + 12,
+        // 靛蓝描边 + 白色光晕：目标元素多是白的，纯白描边会糊在一起
+        boxShadow:
+          '0 0 0 2px #557dbf, 0 0 0 6px rgba(255,255,255,0.45), 0 10px 30px rgba(31,30,29,0.35)',
+      }}
+    />
+  )
+}
+
+function GuideBubble({
+  rect,
+  step,
+  index,
+  total,
+  onNext,
+  onSkip,
+}: {
+  rect: DOMRect
+  step: GuideStep
+  index: number
+  total: number
+  onNext: () => void
+  onSkip: () => void
+}) {
+  const W = 320
+  const GAP = 18
+  let style: React.CSSProperties = {}
+  if (step.place === 'right') {
+    style = { top: Math.max(12, Math.min(rect.top, window.innerHeight - 220)), left: rect.right + GAP, width: W }
+  } else if (step.place === 'top') {
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - W - 12))
+    style = { bottom: window.innerHeight - rect.top + GAP, left, width: W }
+  } else {
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - W - 12))
+    style = { top: rect.bottom + GAP, left, width: W }
+  }
+
+  return (
+    <div
+      className="absolute rounded-card bg-surface-0 p-4 shadow-pop"
+      style={style}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-[11px] text-ink-400">
+          {index} / {total}
+        </span>
+        <button onClick={onSkip} className="text-[11px] text-ink-400 hover:text-ink-700">
+          跳过引导
+        </button>
       </div>
-    </>
+      <h3 className="text-[14px] font-semibold text-ink-900">{step.title}</h3>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-600">{step.desc}</p>
+      <button
+        onClick={onNext}
+        className="mt-3 w-full rounded-field bg-brand-600 py-1.5 text-[13px] text-white transition-colors hover:bg-brand-700"
+      >
+        {index === total ? '完成' : '下一步'}
+      </button>
+    </div>
   )
 }
 
 function FirstRunGuide({ onDone }: { onDone: () => void }) {
-  const [rects, setRects] = useState<{ upload?: DOMRect; input?: DOMRect }>({})
+  const [index, setIndex] = useState(0)
+  const [rect, setRect] = useState<DOMRect | null>(null)
 
   useEffect(() => {
-    // 等布局稳定再取位置（字体/图标加载会微调高度）
+    // 等布局稳定（字体/图标加载会微调高度）
+    setRect(null)
     const t = setTimeout(() => {
-      const grab = (sel: string) => {
-        const el = document.querySelector(sel)
-        return el ? el.getBoundingClientRect() : undefined
-      }
-      setRects({ upload: grab('[data-guide="upload"]'), input: grab('[data-guide="input"]') })
-    }, 260)
+      const el = document.querySelector(GUIDE_STEPS[index].sel)
+      setRect(el ? el.getBoundingClientRect() : null)
+    }, 220)
     return () => clearTimeout(t)
-  }, [])
+  }, [index])
+
+  const step = GUIDE_STEPS[index]
+  const isLast = index === GUIDE_STEPS.length - 1
+  const next = () => (isLast ? onDone() : setIndex((i) => i + 1))
 
   return (
-    <div className="fixed inset-0 z-[70]" onClick={onDone}>
-      <div className="absolute inset-0 bg-ink-900/45" />
+    <div className="fixed inset-0 z-[70]">
+      <div className="absolute inset-0 bg-ink-900/55" onClick={next} />
 
-      {rects.upload && <GuideRing rect={rects.upload} index={1} />}
-      {rects.input && <GuideRing rect={rects.input} index={2} />}
-
-      <div
-        className="absolute left-1/2 top-1/2 w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-card bg-surface-0 p-5 shadow-pop"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-[15px] font-semibold text-ink-900">欢迎使用学期助手</h3>
-
-        <div className="mt-3 space-y-2.5">
-          <div className="flex gap-2.5">
-            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-medium text-brand-700">
-              1
-            </span>
-            <p className="text-[12.5px] leading-relaxed text-ink-600">
-              左侧添加一份带文本层的 PDF。可以先从仓库自带的示例讲义开始。
-            </p>
-          </div>
-          <div className="flex gap-2.5">
-            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-medium text-brand-700">
-              2
-            </span>
-            <p className="text-[12.5px] leading-relaxed text-ink-600">
-              在底部提问。每个答案都标注页码，点开能对照原文；资料里没有的会直接说找不到。
-            </p>
-          </div>
+      {rect && <GuideRing rect={rect} />}
+      {rect ? (
+        <GuideBubble
+          rect={rect}
+          step={step}
+          index={index + 1}
+          total={GUIDE_STEPS.length}
+          onNext={next}
+          onSkip={onDone}
+        />
+      ) : (
+        // 目标元素找不到时不能把用户卡在这里
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-card bg-surface-0 p-5 shadow-pop">
+          <p className="mb-3 text-[13px] text-ink-700">引导暂时无法定位界面元素。</p>
+          <button
+            onClick={onDone}
+            className="rounded-field bg-brand-600 px-4 py-1.5 text-[13px] text-white"
+          >
+            跳过引导
+          </button>
         </div>
+      )}
 
-        <button
-          onClick={onDone}
-          className="mt-4 w-full rounded-field bg-brand-600 py-2 text-[13px] text-white transition-colors hover:bg-brand-700"
-        >
-          开始使用
-        </button>
-      </div>
+      {/* 任何时候都能退出的固定入口 */}
+      <button
+        onClick={onDone}
+        className="absolute right-6 top-6 rounded-field border border-white/30 bg-ink-900/40 px-3 py-1.5 text-[12px] text-white backdrop-blur-sm transition-colors hover:bg-ink-900/60"
+      >
+        跳过引导
+      </button>
     </div>
   )
 }
@@ -1019,6 +1092,7 @@ export default function App() {
           ).map(([key, label, Icon]) => (
             <button
               key={key}
+              data-guide={key}
               onClick={() => setTab(key)}
               className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[13px] transition-colors ${
                 tab === key
