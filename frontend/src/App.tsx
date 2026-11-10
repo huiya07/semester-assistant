@@ -12,6 +12,8 @@ import {
   Inbox,
   Loader2,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   Send,
@@ -118,7 +120,10 @@ function CitationCard({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          transition={{
+            height: { duration: open ? 0.28 : 0.16, ease: open ? [0.22, 1, 0.36, 1] : 'easeIn' },
+            opacity: { duration: open ? 0.22 : 0.12 },
+          }}
           className="overflow-hidden border-t border-surface-3 px-3 py-2.5"
         >
           <div className="mb-2 text-[12px] text-ink-400">命中片段</div>
@@ -241,7 +246,7 @@ function Sidebar({
   const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <aside className="flex w-[268px] shrink-0 flex-col border-r border-surface-3 bg-surface-0">
+    <aside className="flex h-full w-[268px] shrink-0 flex-col border-r border-surface-3 bg-surface-0">
       <div className="px-4 pb-3 pt-5">
         <h1 className="flex items-center gap-2 text-[16px] font-semibold text-ink-900">
           <BookOpen size={18} className="text-brand-600" />
@@ -279,7 +284,7 @@ function Sidebar({
           <select
             value={uploadCourse}
             onChange={(e) => onCourseChange(e.target.value)}
-            className="min-w-0 flex-1 rounded-[6px] border border-surface-3 bg-surface-0 px-1.5 py-1 text-[11px] text-ink-700 outline-none focus:border-brand-400"
+            className="min-w-0 flex-1 rounded-[6px] border border-surface-3 bg-surface-0 px-1.5 py-1 text-[11px] text-ink-700 outline-none transition-colors duration-150 focus:border-brand-400"
           >
             <option value="">未分类</option>
             {courseNames.map((n) => (
@@ -963,6 +968,9 @@ export default function App() {
   const [pendingDelete, setPendingDelete] = useState<DocItem | null>(null)
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [inkBar, setInkBar] = useState({ left: 0, width: 0 })
 
   // 首次访问才弹引导；localStorage 不可用（隐私模式）时静默跳过
   useEffect(() => {
@@ -972,6 +980,12 @@ export default function App() {
       /* 忽略 */
     }
   }, [])
+
+  // tab 下划线跟着当前页滑动，而不是瞬移
+  useEffect(() => {
+    const el = tabRefs.current[tab]
+    if (el) setInkBar({ left: el.offsetLeft, width: el.offsetWidth })
+  }, [tab, guideOpen])
 
   useEffect(() => {
     if (!toast) return
@@ -1131,6 +1145,15 @@ export default function App() {
 
   return (
     <div className="flex h-full">
+      <AnimatePresence initial={false}>
+      {sidebarOpen && (
+      <motion.div
+        initial={{ width: 0, opacity: 0 }}
+        animate={{ width: 268, opacity: 1 }}
+        exit={{ width: 0, opacity: 0 }}
+        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+        className="shrink-0 overflow-hidden"
+      >
       <Sidebar
         docs={docs}
         totalCunks={totalChunks}
@@ -1141,12 +1164,29 @@ export default function App() {
         uploadCourse={uploadCourse}
         onCourseChange={setUploadCourse}
       />
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       <main className="flex min-w-0 flex-1 flex-col">
         <SettingsPanel settings={settings} onSaved={refreshSettings} />
 
         {/* Tab 栏 */}
-        <div className="flex shrink-0 items-center gap-1 border-b border-surface-3 bg-surface-0 px-4">
+        <div className="relative flex shrink-0 items-center gap-1 border-b border-surface-3 bg-surface-0 px-4">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            title={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+            aria-label={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+            className="mr-1 rounded p-1.5 text-ink-400 transition-colors hover:bg-surface-1 hover:text-ink-700"
+          >
+            {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+          </button>
+          <motion.div
+            className="absolute bottom-0 h-[2px] rounded-full bg-brand-600"
+            animate={{ left: inkBar.left, width: inkBar.width }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            initial={false}
+          />
           {(
             [
               ['ask', '资料问答', MessageSquare],
@@ -1155,12 +1195,13 @@ export default function App() {
           ).map(([key, label, Icon]) => (
             <button
               key={key}
+              ref={(el) => {
+                tabRefs.current[key] = el
+              }}
               data-guide={key}
               onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[13px] transition-colors ${
-                tab === key
-                  ? 'border-brand-600 text-brand-700'
-                  : 'border-transparent text-ink-400 hover:text-ink-700'
+              className={`relative flex items-center gap-1.5 px-3 py-2.5 text-[13px] transition-colors ${
+                tab === key ? 'text-brand-700' : 'text-ink-400 hover:text-ink-700'
               }`}
             >
               <Icon size={14} />
@@ -1264,7 +1305,7 @@ export default function App() {
                   <select
                     value={askCourse}
                     onChange={(e) => setAskCourse(e.target.value)}
-                    className="rounded-[6px] border border-surface-3 bg-surface-0/80 px-1.5 py-0.5 text-[11px] text-ink-700 outline-none focus:border-brand-400"
+                    className="rounded-[6px] border border-surface-3 bg-surface-0/80 px-1.5 py-0.5 text-[11px] text-ink-700 outline-none transition-colors duration-150 focus:border-brand-400"
                   >
                     <option value="">全部课程</option>
                     {courseNames.map((n) => (
