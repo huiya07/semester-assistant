@@ -692,13 +692,21 @@ function GuideBubble({
 function FirstRunGuide({ onDone }: { onDone: () => void }) {
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
+  // 必须区分「还没算出来」和「真的找不到」：
+  // 之前两者共用 rect=null，导致每次切换步骤的 220ms 间隙里兜底卡会闪一下
+  const [status, setStatus] = useState<'locating' | 'ok' | 'missing'>('locating')
 
   useEffect(() => {
+    setStatus('locating')
     // 等布局稳定（字体/图标加载会微调高度）
-    setRect(null)
     const t = setTimeout(() => {
       const el = document.querySelector(GUIDE_STEPS[index].sel)
-      setRect(el ? el.getBoundingClientRect() : null)
+      if (el) {
+        setRect(el.getBoundingClientRect())
+        setStatus('ok')
+      } else {
+        setStatus('missing')
+      }
     }, 220)
     return () => clearTimeout(t)
   }, [index])
@@ -712,7 +720,7 @@ function FirstRunGuide({ onDone }: { onDone: () => void }) {
       <div className="absolute inset-0 bg-ink-900/55" onClick={next} />
 
       {rect && <GuideRing rect={rect} />}
-      {rect ? (
+      {status === 'locating' ? null : status === 'ok' && rect ? (
         <GuideBubble
           rect={rect}
           step={step}
