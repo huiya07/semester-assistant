@@ -73,6 +73,8 @@ class AskIn(BaseModel):
     question: str = Field(min_length=1)
     # 可选：限定在哪门课里检索；不传 = 全库
     course: str | None = None
+    # 可选：最近几轮问答 [{q, a}]，只用于消除「它」「这个」这类指代
+    history: list[dict] | None = None
 
 
 class CoursesIn(BaseModel):
@@ -205,7 +207,12 @@ def post_ask(body: AskIn) -> dict:
     try:
         store = get_store()
         started = datetime.now()
-        res = answer(body.question, store=store, course=body.course or None)
+        res = answer(
+            body.question,
+            store=store,
+            course=body.course or None,
+            history=body.history,
+        )
         payload = _answer_payload(res)
         payload["elapsed"] = round((datetime.now() - started).total_seconds(), 1)
         return payload
@@ -232,7 +239,12 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
 
     def gen():
         try:
-            for ev in answer_stream(body.question, store=store, course=body.course or None):
+            for ev in answer_stream(
+                body.question,
+                store=store,
+                course=body.course or None,
+                history=body.history,
+            ):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         except Exception as e:  # 兜底：不让生成器异常把连接吊死
             yield (

@@ -139,6 +139,7 @@ export const api = {
     onEvent: (ev: StreamEvent) => void,
     signal?: AbortSignal,
     course?: string,
+    history?: { q: string; a: string }[],
   ): Promise<void> {
     return (async () => {
       const ac = new AbortController()
@@ -158,7 +159,7 @@ export const api = {
       try {
         const res = await fetch(BASE + '/ask/stream', {
           method: 'POST',
-          ...jsonBody({ question, course: course || null }),
+          ...jsonBody({ question, course: course || null, history }),
           signal: ac.signal,
         })
         if (!res.ok || !res.body) {

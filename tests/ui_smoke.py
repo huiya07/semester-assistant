@@ -48,6 +48,12 @@ def main() -> int:
         print("== 加载 ==")
         page.goto(BASE, wait_until="networkidle")
         page.wait_for_timeout(1500)
+
+        # 全新 context 会触发首次引导，遮罩会拦截后续所有点击，先关掉
+        if "跳过引导" in page.inner_text("body"):
+            page.locator('button:has-text("跳过引导")').first.click()
+            page.wait_for_timeout(500)
+
         check("页面标题正确", "学期助手" in page.title(), page.title())
         check("侧边栏渲染", page.locator("text=学期助手").count() > 0)
         check("输入框可用", page.locator("textarea").count() == 1)

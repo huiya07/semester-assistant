@@ -32,7 +32,9 @@ SYSTEM_PROMPT = """你是一个严谨的课程资料助手。你必须严格依�
    在回答末尾单独用一行写「资料未覆盖：<具体缺哪个方面>」。
    只有当片段与问题**完全无关**、一点相关信息都没有时，才只输出 NO_ANSWER 四个字母。
 4. 不得编造页码、作者、数字、公式。片段里没写的，就不写。
-5. 用中文回答，简洁，不要复述问题。"""
+5. 用中文回答，简洁，不要复述问题。
+6. 用户可能用「它」「这个指标」等指代前文的对象，结合对话历史理解指的是什么；
+   但答案内容依然只能来自本轮的资料片段，历史只用于消除指代。"""
 
 
 @dataclass
@@ -172,8 +174,30 @@ def _select_context(hits: list[Hit], max_other: int = 2) -> list[Hit]:
     return same + others
 
 
+def _history_messages(history: list[dict] | None, rounds: int = 5) -> list[dict]:
+    """把最近几轮问答转成 messages。
+
+    只用于消除指代（「它」「这个」），答案内容仍必须来自本轮检索片段。
+    答案截断到 300 字，避免历史把上下文预算吃光。
+    """
+    out: list[dict] = []
+    for h in (history or [])[-rounds:]:
+        q = (h.get("q") or "").strip()
+        a = (h.get("a") or "").strip()
+        if not q:
+            continue
+        out.append({"role": "user", "content": q})
+        if a:
+            out.append({"role": "assistant", "content": a[:300]})
+    return out
+
+
 def answer(
-    question: str, top_k: int = 8, store: Store | None = None, course: str | None = None
+    question: str,
+    top_k: int = 8,
+    store: Store | None = None,
+    course: str | None = None,
+    history: list[dict] | None = None,
 ) -> Answer:
     question = question.strip()
     if not question:
@@ -204,6 +228,7 @@ def answer(
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
+        *_history_messages(history),
         {
             "role": "user",
             "content": f"资料片段：\n\n{_format_context(hits)}\n\n问题：{question}",
@@ -280,7 +305,11 @@ _HOLD_CHARS = 12  # 足够覆盖 "NO_ANSWER" 及前导空白
 
 
 def answer_stream(
-    question: str, top_k: int = 8, store: Store | None = None, course: str | None = None
+    question: str,
+    top_k: int = 8,
+    store: Store | None = None,
+    course: str | None = None,
+    history: list[dict] | None = None,
 ):
     """生成器，逐条产出事件字典。"""
     question = question.strip()
@@ -328,6 +357,7 @@ def answer_stream(
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
+        *_history_messages(history),
         {
             "role": "user",
             "content": f"资料片段：\n\n{_format_context(hits)}\n\n问题：{question}",

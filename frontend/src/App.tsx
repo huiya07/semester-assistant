@@ -278,6 +278,10 @@ function Sidebar({
   onCourseChange: (c: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
+  const shown = query.trim()
+    ? docs.filter((d) => d.doc_name.toLowerCase().includes(query.trim().toLowerCase()))
+    : docs
 
   return (
     <aside className="flex h-full w-[268px] shrink-0 flex-col border-r border-surface-3 bg-surface-0">
@@ -334,10 +338,30 @@ function Sidebar({
         <div className="px-2 pb-1.5 text-[11px] uppercase tracking-wide text-ink-500">
           资料库 · {docs.length} 篇 / {totalCunks} 片段
         </div>
+        {docs.length > 2 && (
+          <div className="mb-1.5 px-2">
+            <div className="relative">
+              <Search
+                size={12}
+                className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-400"
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="按名称筛选"
+                aria-label="按名称筛选资料"
+                className="w-full rounded-[6px] border border-surface-3 bg-surface-1 py-1 pl-[26px] pr-2 text-[12px] text-ink-700 outline-none transition-colors duration-150 placeholder:text-ink-400 focus:border-brand-400"
+              />
+            </div>
+          </div>
+        )}
         {docs.length === 0 && (
           <p className="px-2 py-3 text-[12px] text-ink-400">还是空的，先传一份 PDF。</p>
         )}
-        {docs.map((d) => (
+        {docs.length > 0 && shown.length === 0 && (
+          <p className="px-2 py-3 text-[12px] text-ink-400">没有匹配「{query}」的资料。</p>
+        )}
+        {shown.map((d) => (
           <div
             key={d.doc_id}
             className="group flex items-center gap-2 rounded-field px-2 py-1.5 hover:bg-surface-1"
@@ -1107,6 +1131,8 @@ export default function App() {
     ])
 
     const started = performance.now()
+    // 最近 5 轮只用于消解指代（「它」「这个指标」），不参与答案内容
+    const history = msgs.slice(-5).map((m) => ({ q: m.q, a: m.text }))
     const ac = new AbortController()
     abortRef.current = ac
 
@@ -1149,6 +1175,7 @@ export default function App() {
         },
         ac.signal,
         askCourse || undefined,
+        history,
       )
     } catch (e) {
       const kind = e instanceof ApiError ? e.kind : 'network'
