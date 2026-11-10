@@ -155,9 +155,14 @@ def main() -> None:
             if text.startswith("<") and text.endswith(">"):
                 continue
             role = d["type"]
-            if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
-                text = text[:MAX_ASSISTANT_CHARS].rstrip() + "…（后略）"
-            turns.append((d.get("timestamp", "")[:19], role, redact(text, extra_redactions)))
+            cleaned = redact(text, extra_redactions)
+            # 同一次回复常被拆成多条记录（每次工具调用之间断一次），
+            # 只留单条会变成一句半，拼起来才读得通
+            if role == "assistant" and turns and turns[-1][1] == "assistant":
+                prev_ts, _, prev = turns[-1]
+                turns[-1] = (prev_ts, "assistant", prev + "\n\n" + cleaned)
+            else:
+                turns.append((d.get("timestamp", "")[:19], role, cleaned))
 
     lines = [
         "# AI 对话历史（节选）",
@@ -176,6 +181,9 @@ def main() -> None:
         "",
     ]
     for ts, role, text in turns:
+        # 截断放在合并之后做，否则一段回复会被切成好几截
+        if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
+            text = text[:MAX_ASSISTANT_CHARS].rstrip() + "…（后略）"
         who = "🧑 用户" if role == "user" else "🤖 AI"
         lines.append(f"### {who} · {ts}")
         lines.append("")
