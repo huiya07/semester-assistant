@@ -265,6 +265,7 @@ function Sidebar({
           }}
         />
         <button
+          data-guide="upload"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           className="flex w-full items-center justify-center gap-2 rounded-field border border-dashed border-surface-3 bg-surface-1 py-2.5 text-[13px] text-ink-500 transition-colors hover:border-brand-300 hover:text-brand-600 disabled:opacity-60"
@@ -585,6 +586,92 @@ function WeekPanel({ view }: { view: WeekView | null }) {
   )
 }
 
+// ---------------------------------------------------------------- 首次访问引导
+
+const GUIDE_KEY = 'sa_guide_seen_v1'
+
+/** 用白色描边圈出指定元素；四周不挖洞，只靠遮罩压暗 + 描边突出。 */
+function GuideRing({ rect, index }: { rect: DOMRect; index: number }) {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute rounded-field ring-2 ring-white/95 transition-all"
+        style={{
+          top: rect.top - 6,
+          left: rect.left - 6,
+          width: rect.width + 12,
+          height: rect.height + 12,
+          boxShadow: '0 0 0 1px rgba(31,30,29,0.15), 0 8px 24px rgba(31,30,29,0.18)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-ink-900 shadow"
+        style={{ top: rect.top - 16, left: rect.left - 16 }}
+      >
+        {index}
+      </div>
+    </>
+  )
+}
+
+function FirstRunGuide({ onDone }: { onDone: () => void }) {
+  const [rects, setRects] = useState<{ upload?: DOMRect; input?: DOMRect }>({})
+
+  useEffect(() => {
+    // 等布局稳定再取位置（字体/图标加载会微调高度）
+    const t = setTimeout(() => {
+      const grab = (sel: string) => {
+        const el = document.querySelector(sel)
+        return el ? el.getBoundingClientRect() : undefined
+      }
+      setRects({ upload: grab('[data-guide="upload"]'), input: grab('[data-guide="input"]') })
+    }, 260)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-[70]" onClick={onDone}>
+      <div className="absolute inset-0 bg-ink-900/45" />
+
+      {rects.upload && <GuideRing rect={rects.upload} index={1} />}
+      {rects.input && <GuideRing rect={rects.input} index={2} />}
+
+      <div
+        className="absolute left-1/2 top-1/2 w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-card bg-surface-0 p-5 shadow-pop"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-[15px] font-semibold text-ink-900">欢迎使用学期助手</h3>
+
+        <div className="mt-3 space-y-2.5">
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-medium text-brand-700">
+              1
+            </span>
+            <p className="text-[12.5px] leading-relaxed text-ink-600">
+              左侧添加一份带文本层的 PDF。可以先从仓库自带的示例讲义开始。
+            </p>
+          </div>
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-medium text-brand-700">
+              2
+            </span>
+            <p className="text-[12.5px] leading-relaxed text-ink-600">
+              在底部提问。每个答案都标注页码，点开能对照原文；资料里没有的会直接说找不到。
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onDone}
+          className="mt-4 w-full rounded-field bg-brand-600 py-2 text-[13px] text-white transition-colors hover:bg-brand-700"
+        >
+          开始使用
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- 课表导入
 
 function ImportPanel({ onChanged }: { onChanged: () => void }) {
@@ -739,6 +826,16 @@ export default function App() {
   const [week, setWeek] = useState<WeekView | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DocItem | null>(null)
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  // 首次访问才弹引导；localStorage 不可用（隐私模式）时静默跳过
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(GUIDE_KEY)) setGuideOpen(true)
+    } catch {
+      /* 忽略 */
+    }
+  }, [])
 
   useEffect(() => {
     if (!toast) return
@@ -1009,7 +1106,7 @@ export default function App() {
 
             {/* 悬浮玻璃输入框 */}
             <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-5">
-              <div className="mx-auto max-w-[760px]">
+              <div className="mx-auto max-w-[760px]" data-guide="input">
               {courseNames.length > 0 && (
                 <div className="mb-1.5 flex items-center gap-1.5 pl-1 text-[11px] text-ink-500">
                   <Search size={11} />
@@ -1090,6 +1187,20 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 首次访问引导 */}
+      {guideOpen && (
+        <FirstRunGuide
+          onDone={() => {
+            try {
+              localStorage.setItem(GUIDE_KEY, '1')
+            } catch {
+              /* 忽略 */
+            }
+            setGuideOpen(false)
+          }}
+        />
+      )}
 
       {/* 删除确认（CDS ConfirmationDialog） */}
       <ConfirmationDialog
