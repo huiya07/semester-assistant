@@ -481,9 +481,25 @@ function WeekPanel({ view }: { view: WeekView | null }) {
 
   return (
     <div className="mx-auto max-w-[1100px] px-6 py-6">
-      <h2 className="mb-4 text-[15px] font-semibold text-ink-900">
-        第 {view.week_no} 周 · {view.monday} 起
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h2 className="text-[15px] font-semibold text-ink-900">
+          第 {view.week_no} 周 · {view.monday} 起
+        </h2>
+        <span
+          className={`rounded px-1.5 py-0.5 text-[11px] ${
+            view.courses_custom
+              ? 'bg-brand-50 text-brand-700'
+              : 'bg-surface-2 text-ink-500'
+          }`}
+        >
+          {view.courses_custom ? '自定义课表' : '示例数据'}
+        </span>
+        {!view.courses_custom && (
+          <span className="text-[11px] text-ink-400">
+            可在下方「导入 / 管理」换成你自己的课表与作业
+          </span>
+        )}
+      </div>
 
       <div className="grid grid-cols-7 gap-2">
         {view.days.map((d) => (
@@ -855,11 +871,30 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
             {msg && <span className="text-[12px] text-ink-500">{msg}</span>}
           </div>
 
-          <p className="text-[12px] leading-relaxed text-ink-500">
-            课表格式：<code className="rounded bg-surface-2 px-1">{'{ "courses": [ {"name","day","start_section","end_section","weeks"} ] }'}</code>
-            <br />
-            作业格式：<code className="rounded bg-surface-2 px-1">{'{ "assignments": [ {"id","course","title","due_date"} ] }'}</code>
-          </p>
+          <div className="space-y-1.5 rounded-field bg-surface-1 px-3 py-2.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-600">
+                课表
+              </span>
+              <span className="text-[12px] text-ink-500">
+                必填 <code className="text-ink-700">name</code> ·
+                <code className="text-ink-700"> day</code>（1–7）·
+                <code className="text-ink-700"> weeks</code>（数组），可选
+                <code className="text-ink-700"> start_section / end_section / start_time / end_time</code>
+              </span>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-600">
+                作业
+              </span>
+              <span className="text-[12px] text-ink-500">
+                必填 <code className="text-ink-700">id</code> ·
+                <code className="text-ink-700"> course</code> ·
+                <code className="text-ink-700"> title</code> ·
+                <code className="text-ink-700"> due_date</code>（YYYY-MM-DD）
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>

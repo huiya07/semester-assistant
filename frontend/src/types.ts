@@ -65,6 +65,8 @@ export interface WeekView {
   course_count: number
   upcoming: AssignEntry[]
   before_semester: boolean
+  /** 课表是否为用户导入（false = 仓库自带示例数据） */
+  courses_custom?: boolean
 }
 
 export interface SettingsPayload {

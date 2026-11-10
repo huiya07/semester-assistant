@@ -169,6 +169,41 @@ class Store:
             for i, d, m, dist in zip(ids, docs, metas, dists)
         ]
 
+    def chunks_of_page(
+        self, page_no: int, doc_id: str | None = None, course: str | None = None
+    ) -> list[Hit]:
+        """直接按页码取片段，不走向量检索。
+
+        「第 3 页说了什么」这类问题问的是文档位置而非内容，语义检索匹配不上
+        （实测距离 0.661，刚好被 0.65 阈值拦在门外）。既然用户已经把页码说清楚了，
+        就没必要再猜——直接把这页的片段给他。
+        """
+        if self.count() == 0:
+            return []
+        conditions: list[dict] = [{"page_no": page_no}]
+        if doc_id:
+            conditions.append({"doc_id": doc_id})
+        if course:
+            conditions.append({"$or": [{"course": course}, {"course": ""}]})
+        where = conditions[0] if len(conditions) == 1 else {"$and": conditions}
+
+        res = self.col.get(where=where, include=["documents", "metadatas"])
+        out: list[Hit] = []
+        for text, m in zip(res["documents"], res["metadatas"]):
+            out.append(
+                Hit(
+                    chunk_id=m.get("chunk_id", ""),
+                    doc_id=m["doc_id"],
+                    doc_name=m.get("doc_name", m["doc_id"]),
+                    page_no=m["page_no"],
+                    text=text,
+                    distance=0.0,  # 按页码定位，相关性确定
+                    pdf_file=m.get("pdf_file", ""),
+                    course=m.get("course", ""),
+                )
+            )
+        return out
+
     def count(self) -> int:
         return self.col.count()
 

@@ -72,6 +72,22 @@ def _client() -> OpenAI:
     return OpenAI(api_key=s.api_key, base_url=s.base_url, timeout=90.0, max_retries=1)
 
 
+_PAGE_RE = re.compile(r"第\s*(\d+)\s*页")
+
+
+def _page_hits(store: Store, question: str, course: str | None = None) -> list[Hit]:
+    """问题里点名了「第 N 页」就直接按页取，不走向量检索。
+
+    这类问题问的是文档位置而非内容，语义检索匹配不上：
+    实测「《X》的第 1 页说了什么？」距离 0.661，恰好越过 0.65 阈值被拦。
+    用户已经把页码说清楚了，没必要再猜。
+    """
+    m = _PAGE_RE.search(question)
+    if not m:
+        return []
+    return store.chunks_of_page(int(m.group(1)), course=course)
+
+
 def _format_context(hits: list[Hit]) -> str:
     lines = []
     for i, h in enumerate(hits, 1):
@@ -172,7 +188,9 @@ def answer(
             searched=["知识库为空"],
         )
 
-    hits = store.search(question, top_k=top_k, course=course)
+    hits = _page_hits(store, question, course=course) or store.search(
+        question, top_k=top_k, course=course
+    )
     if not hits:
         return _not_found([], None)
 
@@ -280,7 +298,9 @@ def answer_stream(
         }
         return
 
-    hits = store.search(question, top_k=top_k, course=course)
+    hits = _page_hits(store, question, course=course) or store.search(
+        question, top_k=top_k, course=course
+    )
     if not hits:
         nf = _not_found([], None)
         yield {

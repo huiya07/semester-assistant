@@ -153,6 +153,7 @@ def week_view(d: date) -> dict:
             "course_count": 0,
             "upcoming": upcoming_assignments(d),
             "before_semester": True,
+            "courses_custom": (USER_DATA_DIR / "courses.json").exists(),
         }
 
     monday = week_monday(d)
@@ -191,4 +192,6 @@ def week_view(d: date) -> dict:
         "course_count": sum(len(x["courses"]) for x in days),
         "upcoming": upcoming_assignments(d),
         "before_semester": False,
+        # 评委拿到手时用的是仓库自带示例；用户导入过就是自定义
+        "courses_custom": (USER_DATA_DIR / "courses.json").exists(),
     }
