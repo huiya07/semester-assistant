@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock,
   Inbox,
   Loader2,
@@ -157,6 +158,17 @@ function CitationCard({
 }
 
 function Message({ m }: { m: Msg }) {
+  // 长回答折叠：流式过程中不折（内容还在长），结束后按实际高度决定
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (m.status === 'streaming') return
+    const el = bodyRef.current
+    if (el) setOverflows(el.scrollHeight > 280)
+  }, [m.text, m.status])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -183,10 +195,31 @@ function Message({ m }: { m: Msg }) {
 
           {/* not_found 的正文改由下面的琥珀警示框承载，这里不再重复渲染一遍 */}
           {m.text && m.status !== 'not_found' && (
-            <div className="md-body text-[14px] leading-[1.75] text-ink-900">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
-              {m.status === 'streaming' && <span className="sa-caret" />}
-            </div>
+            <>
+              <div
+                ref={bodyRef}
+                className={`md-body text-[14px] leading-[1.75] text-ink-900 ${
+                  overflows && !expanded ? 'max-h-[280px] overflow-hidden' : ''
+                }`}
+                style={
+                  overflows && !expanded
+                    ? { maskImage: 'linear-gradient(to bottom, #000 72%, transparent)' }
+                    : undefined
+                }
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
+                {m.status === 'streaming' && <span className="sa-caret" />}
+              </div>
+              {overflows && (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="mt-1 flex items-center gap-1 text-[12px] text-brand-600 transition-colors hover:text-brand-700"
+                >
+                  {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {expanded ? '收起' : '展开全文'}
+                </button>
+              )}
+            </>
           )}
 
           {m.status === 'not_found' && (

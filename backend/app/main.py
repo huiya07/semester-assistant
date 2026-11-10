@@ -75,5 +75,7 @@ def spa_fallback(full_path: str):
         return FileResponse(target)
     index = _DIST / "index.html"
     if index.is_file():
-        return FileResponse(index)
+        # index.html 必须每次回源：它引用的是带 hash 的 JS/CSS 文件名，
+        # 一旦被浏览器缓存，前端更新后用户不硬刷新就永远看不到新版本
+        return FileResponse(index, headers={"Cache-Control": "no-cache, must-revalidate"})
     return {"detail": "前端尚未构建。"}
