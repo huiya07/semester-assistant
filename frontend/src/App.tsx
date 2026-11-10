@@ -390,7 +390,15 @@ function SettingsPanel({
         )}
       </button>
 
+      <AnimatePresence initial={false}>
       {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
+        >
         <div className="grid grid-cols-3 gap-3 px-5 pb-4">
           <label className="text-[12px] text-ink-500">
             API Base URL
@@ -442,7 +450,9 @@ function SettingsPanel({
             )}
           </div>
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
 
     <ConfirmationDialog
@@ -821,7 +831,15 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
         导入 / 管理课表与作业
       </button>
 
+      <AnimatePresence initial={false}>
       {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
+        >
         <div className="space-y-3 border-t border-surface-3 px-4 py-3">
           <p className="text-[12px] text-ink-500">
             当前课表：<strong>{meta?.courses ?? '—'}</strong> 条（
@@ -896,7 +914,9 @@ function ImportPanel({ onChanged }: { onChanged: () => void }) {
             </div>
           </div>
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
 
     <ConfirmationDialog
@@ -1149,6 +1169,19 @@ export default function App() {
           ))}
         </div>
 
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          className={
+            tab === 'ask'
+              ? 'relative flex min-h-0 flex-1 flex-col'
+              : 'flex-1 overflow-y-auto'
+          }
+        >
         {tab === 'ask' && (
           <div className="relative flex min-h-0 flex-1 flex-col">
             <ScrollFadeContainer orientation="vertical" fadeSize={30} className="flex-1">
@@ -1284,6 +1317,8 @@ export default function App() {
             </div>
           </div>
         )}
+        </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* 轻提示 */}
