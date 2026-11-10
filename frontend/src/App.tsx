@@ -471,6 +471,9 @@ function SettingsPanel({
 // ---------------------------------------------------------------- 周视图
 
 function WeekPanel({ view }: { view: WeekView | null }) {
+  // 周视图每列只有约 140px，作业标题必然被截断；点击看完整内容
+  const [detail, setDetail] = useState<{ course: string; title: string; due: string } | null>(null)
+
   if (!view) return <div className="p-8 text-[13px] text-ink-400">加载中…</div>
   if (view.before_semester)
     return <div className="p-8 text-[13px] text-ink-500">学期还没开始（开学日 {view.monday}）。</div>
@@ -510,14 +513,20 @@ function WeekPanel({ view }: { view: WeekView | null }) {
             ))}
 
             {d.due.map((a) => (
-              <div key={a.id} className="mb-1.5 rounded bg-red-50 px-1.5 py-1">
-                <div className="truncate text-[11px] font-medium text-red-700" title={a.course}>
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setDetail({ course: a.course, title: a.title, due: a.due_date })}
+                className="mb-1.5 block w-full rounded bg-red-50 px-1.5 py-1 text-left transition-colors hover:bg-red-100 focus-visible:ring-2 focus-visible:ring-red-400"
+                title={`${a.course} · ${a.title}（点击查看完整内容）`}
+              >
+                <div className="truncate text-[11px] font-medium text-red-700">
                   ⚠ {a.course}
                 </div>
-                <div className="truncate text-[11px] text-red-700" title={a.title}>
+                <div className="truncate text-[11px] text-red-700">
                   {a.title}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ))}
@@ -540,6 +549,38 @@ function WeekPanel({ view }: { view: WeekView | null }) {
           </ul>
         )}
       </div>
+
+      {/* 作业详情：列宽只有 140px 左右，完整内容放这里看 */}
+      {detail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/25 backdrop-blur-[2px]"
+          onClick={() => setDetail(null)}
+        >
+          <div
+            className="w-[380px] rounded-card bg-surface-0 p-5 shadow-pop"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] text-red-700">作业</span>
+              <button
+                onClick={() => setDetail(null)}
+                className="rounded p-1 text-ink-400 hover:bg-surface-1"
+                aria-label="关闭"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="text-[15px] font-semibold text-ink-900">{detail.course}</div>
+            <p className="mt-1.5 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-ink-700">
+              {detail.title}
+            </p>
+            <div className="mt-3 flex items-center gap-1.5 text-[12px] text-ink-500">
+              <Clock size={12} />
+              截止 {detail.due}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
