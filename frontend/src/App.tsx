@@ -167,7 +167,7 @@ function Message({ m }: { m: Msg }) {
   useEffect(() => {
     if (m.status === 'streaming') return
     const el = bodyRef.current
-    if (el) setOverflows(el.scrollHeight > 420)
+    if (el) setOverflows(el.scrollHeight > 320)
   }, [m.text, m.status])
 
   return (
@@ -200,7 +200,7 @@ function Message({ m }: { m: Msg }) {
               <div
                 ref={bodyRef}
                 className={`md-body text-[14px] leading-[1.75] text-ink-900 ${
-                  overflows && collapsed ? 'max-h-[420px] overflow-hidden' : ''
+                  overflows && collapsed ? 'max-h-[200px] overflow-hidden' : ''
                 }`}
                 style={
                   overflows && collapsed
