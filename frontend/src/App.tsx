@@ -104,12 +104,9 @@ function CitationCard({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 transition-colors hover:bg-surface-1"
       >
-        <motion.span
-          animate={{ rotate: open ? 0 : 0 }}
-          className="flex"
-        >
+        <span className="flex">
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </motion.span>
+        </span>
         <span className="truncate">
           {label} · 《{c.doc_name}》第 {c.page_no} 页
         </span>
@@ -366,17 +363,19 @@ function Sidebar({
             key={d.doc_id}
             className="group flex items-center gap-2 rounded-field px-2 py-1.5 hover:bg-surface-1"
           >
-            <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700" title={d.doc_name}>
-              {d.doc_name}
-            </span>
-            {d.course && (
-              <span
-                className="shrink-0 rounded bg-brand-50 px-1 py-0.5 text-[10px] text-brand-700"
-                title={`归属课程：${d.course}`}
-              >
-                {d.course.length > 4 ? d.course.slice(0, 4) : d.course}
-              </span>
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] leading-5 text-ink-700" title={d.doc_name}>
+                {d.doc_name}
+              </div>
+              {d.course && (
+                <div
+                  className="-ml-1 mt-0.5 truncate text-[10px] leading-4 text-brand-700"
+                  title={`归属课程：${d.course}`}
+                >
+                  <span className="rounded bg-brand-50 px-1 py-0.5">{d.course}</span>
+                </div>
+              )}
+            </div>
             <span className="shrink-0 text-[11px] text-ink-500">{d.chunks}</span>
             <button
               onClick={() => onDelete(d)}
@@ -629,11 +628,17 @@ function WeekPanel({ view }: { view: WeekView | null }) {
         ) : (
           <ul className="space-y-1">
             {view.upcoming.map((a) => (
-              <li key={a.id} className="text-[13px] text-ink-700">
-                <code className="mr-2 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-500">
+              <li
+                key={a.id}
+                className="flex items-baseline gap-2 text-[13px] text-ink-700"
+                title={`${a.course} · ${a.title}`}
+              >
+                <code className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-500">
                   {a.due_date}
                 </code>
-                <strong>{a.course}</strong> · {a.title}
+                <span className="min-w-0 truncate">
+                  <strong>{a.course}</strong> · {a.title}
+                </span>
               </li>
             ))}
           </ul>
