@@ -80,9 +80,16 @@ def spa_fallback(full_path: str):
         raise HTTPException(status_code=404, detail="接口不存在。")
     if not _DIST.is_dir():
         return {"detail": "前端尚未构建。开发时请用 Vite dev server（npm run dev）。"}
-    target = _DIST / full_path
-    if full_path and target.is_file():
-        return FileResponse(target)
+    # 路径必须先解析再判断边界：直接 (_DIST / full_path) 的话，
+    # "../" 一类输入会落到 dist 之外（实测 /%2e%2e%2fpackage.json 能读到仓库文件）。
+    if full_path:
+        try:
+            target = (_DIST / full_path).resolve()
+            root = _DIST.resolve()
+        except (OSError, ValueError):
+            target = root = _DIST
+        if (target == root or root in target.parents) and target.is_file():
+            return FileResponse(target)
     index = _DIST / "index.html"
     if index.is_file():
         # index.html 必须每次回源：它引用的是带 hash 的 JS/CSS 文件名，

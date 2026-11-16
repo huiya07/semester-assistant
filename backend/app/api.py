@@ -171,6 +171,9 @@ def post_upload(file: UploadFile = File(...), course: str = Form("")) -> dict:
 
 @router.delete("/library/{doc_id}")
 def delete_doc(doc_id: str) -> dict:
+    # 和 patch 保持一致的形状校验：这个 id 会被拼进文件路径找留底原件
+    if not _DOC_ID_RE.fullmatch(doc_id):
+        raise HTTPException(status_code=404, detail="文档不存在。")
     with _write_lock:
         get_store().purge_document(doc_id)
     return {"ok": True}
@@ -242,7 +245,6 @@ def post_ask(body: AskIn) -> dict:
 def post_ask_stream(body: AskIn) -> StreamingResponse:
     if not _ask_lock.acquire(blocking=False):
         raise HTTPException(status_code=429, detail=BUSY_DETAIL)
-    store = get_store()
 
     # 释放不能只挂在生成器的 finally 上：客户端中途断开时，
     # Starlette 不保证会把生成器消费到底，finally 就没机会执行。
@@ -255,6 +257,14 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
         if not released:
             released = True
             _ask_lock.release()
+
+    # get_store() 会抛（首次加载嵌入模型、Chroma 损坏）。
+    # 它必须在释放路径之内，否则一次加载失败就会把锁焊死，后续问答全 429。
+    try:
+        store = get_store()
+    except Exception:
+        release()
+        raise
 
     def gen():
         try:

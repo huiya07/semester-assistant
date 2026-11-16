@@ -202,10 +202,12 @@ class Store:
 
         res = self.col.get(where=where, include=["documents", "metadatas"])
         out: list[Hit] = []
-        for text, m in zip(res["documents"], res["metadatas"]):
+        # chunk_id 是 Chroma 的文档主键，不在 metadata 里，要单独从 ids 取。
+        # 之前从 metadata 读，恒为空串。
+        for cid, text, m in zip(res["ids"], res["documents"], res["metadatas"]):
             out.append(
                 Hit(
-                    chunk_id=m.get("chunk_id", ""),
+                    chunk_id=cid,
                     doc_id=m["doc_id"],
                     doc_name=m.get("doc_name", m["doc_id"]),
                     page_no=m["page_no"],

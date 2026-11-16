@@ -200,9 +200,12 @@ export const api = {
             } catch {
               continue // 半个包，丢掉
             }
-            if (!gotFirst) {
+            // 只有真的开始吐字才算「首字」。
+            // 后端会先发一条 meta（检索结果与耗时），那不是回答内容；
+            // 拿 meta 就当首字的话，模型卡住时这个超时永远不会触发。
+            if (!gotFirst && ev.type === 'token') {
               gotFirst = true
-              clearTimeout(firstTimer) // 已经出字了，首个 token 超时不再生效
+              clearTimeout(firstTimer)
             }
             onEvent(ev)
           }

@@ -120,7 +120,7 @@ uv run python tools/make_sample_pdf.py
 curl.exe -L -o backend\samples\attention.pdf "https://arxiv.org/pdf/1706.03762v7"
 ```
 
-然后在界面左侧上传文件，点「加入资料库」。
+然后在界面左侧点「添加资料（PDF）」上传文件；传完会弹窗问一次归属课程，可以跳过。
 
 > 扫描版 PDF（无文本层）会被明确拒绝，本项目不做 OCR。
 
@@ -149,7 +149,7 @@ backend/
     store.py            Chroma 读写与检索
     qa.py               检索 → 生成 → 引用校验（三层抗幻觉）
     semester.py         周次计算与周视图
-    api.py              REST 接口层（14 个端点：设置/资料库/问答/流式/原页/学期）
+    api.py              REST 接口层（17 个方法 / 15 条路径：设置/资料库/问答/流式/原页/学期）
     main.py             FastAPI 入口，挂载 api 路由与前端静态文件
     render.py           PDF 页渲染为 PNG（出处对照用）
     settings.py         运行期模型配置（界面保存优先于 .env）
@@ -180,12 +180,13 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 
 ```bash
 # 后端（21 项，约 10 秒）
-# 前置：uv run uvicorn backend.app.main:app --port 8000
-uv run pytest tests/test_smoke.py -v
+# 前置：服务已启动。用 venv 里的解释器，不要用 uv run——
+# 服务占着 venv 时 uv run 会报「拒绝访问」。
+.venv\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000
+.venv\Scripts\python.exe -m pytest tests/test_smoke.py -v
 
 # 前端端到端（14 项，Playwright 驱动系统 Edge）
 # 前置：后端已启动；Playwright 装在全局 Python
-
 python -X utf8 tests/ui_smoke.py
 ```
 

@@ -1,10 +1,12 @@
-"""冒烟测试：一条命令验证后端全链路是否还完整。
+r"""冒烟测试：一条命令验证后端全链路是否还完整。
 
 前置：服务已启动
-    uv run uvicorn backend.app.main:app --port 8000
+    .venv\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000
 
 运行：
-    uv run pytest tests/test_smoke.py -v
+    .venv\Scripts\python.exe -m pytest tests/test_smoke.py -v
+
+（不用 `uv run`：服务占着 venv 时它会报「拒绝访问」而失败）
 
 设计原则：
 1. **不依赖用户数据**。需要问答的用例会幂等地上传仓库自带的示例讲义
