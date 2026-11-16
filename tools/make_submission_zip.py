@@ -19,7 +19,7 @@ OUT = ROOT.parent / f"semester-assistant-提交包-{date.today():%Y%m%d}.zip"
 
 SKIP_SUFFIX = {".pyc", ".mp4", ".mov"}
 
-NOTE = """学期助手（Semester Assistant）
+NOTE = r"""学期助手（Semester Assistant）
 第九届传智杯 · AI 创新应用挑战赛（Vibe Coding）· 个人赛 · C 组
 
 【这是什么】
@@ -38,12 +38,21 @@ NOTE = """学期助手（Semester Assistant）
     4. uv run uvicorn backend.app.main:app --port 8000
   浏览器打开 http://127.0.0.1:8000
 
-  ★ 首次运行需要联网下载：Python 依赖约 1GB + 中文嵌入模型约 100MB。
-    · 嵌入模型已默认走国内镜像 hf-mirror.com，无需额外配置。
+  ★ 首次运行需要联网下载：Python 依赖（下载约 330 MB，装完约 1.2 GB，
+    空缓存实测 222 秒）+ 中文嵌入模型约 95 MB。
+    · 嵌入模型默认走国内镜像 hf-mirror.com。
+      ⚠ 机器上开着系统代理（Clash 等）时这一步会卡住：请求走代理会报
+      SSL 错误，表现为「上传 PDF 后一直转圈」。启动前清掉代理变量即可：
+        $env:HTTP_PROXY = ""; $env:HTTPS_PROXY = ""
+      或让镜像域名绕过代理：
+        $env:NO_PROXY = "hf-mirror.com,cas-bridge.xethub.hf.co,*.hf.co"
     · 官方 PyPI 的 wheel 下载在部分网络下会被拒绝（403），所以默认用华为云镜像
       （实测 7.5 MB/s）；如果镜像不可用，去掉 --default-index 参数改用官方源。
 
   也可以跳过改 .env：界面打开后直接在「⚙ 模型配置」里填 Key。
+
+  ★ 跑测试时用 venv 里的解释器，不要用 uv run —— 服务占着 venv 时会报「拒绝访问」：
+    .venv\Scripts\python.exe -m pytest tests/test_smoke.py -v
 
 【自带示例资料】
   backend/samples/sample-lecture-notes.pdf
