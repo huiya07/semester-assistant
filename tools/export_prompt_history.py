@@ -80,6 +80,9 @@ REDACTIONS = [
     (re.compile(r"1[3-9]\d{9}"), "[手机号]"),
     (re.compile(r"[A-Za-z]:\\Users\\[^\s\"'，。）]*"), "<本地路径>"),
     (re.compile(r"[A-Za-z]:\\[^\s\"'，。）]*\\[^\s\"'，。）]*"), "<本地路径>"),
+    # 网盘分享链接：仓库是公开的，链接一旦出现在这里，等于把提交包对所有人开放
+    (re.compile(r"https?://pan\.quark\.cn/s/\w+"), "<网盘链接>"),
+    (re.compile(r"https?://pan\.baidu\.com/s/[\w-]+"), "<网盘链接>"),
 ]
 
 # 具体的人名、学校、班级、UID 不写在这里（脚本是公开的，写死等于列清单）。
