@@ -179,7 +179,7 @@ tools/build_courses.py  个人课表 → courses.json（开发期工具）
 两条冒烟测试，覆盖后端接口与前端交互：
 
 ```bash
-# 后端（20 项，约 6 秒）
+# 后端（21 项，约 10 秒）
 # 前置：uv run uvicorn backend.app.main:app --port 8000
 uv run pytest tests/test_smoke.py -v
 
