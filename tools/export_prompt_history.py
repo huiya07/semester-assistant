@@ -46,6 +46,16 @@ SKIP_PREFIXES = (
     "[Request interrupted",
 )
 
+# 演示视频的拍摄与剪辑过程：这段讨论的是「怎么让画面好看、哪段素材不能用」，
+# 与代码能力和问题解决无关。整段略去，只留一行说明，避免分散阅读重点。
+SKIP_RANGES = [
+    (
+        "2026-11-16T12:59:55",
+        "2026-11-16T14:12:20",
+        "演示视频的拍摄与剪辑过程（取景、素材筛选、转场设计、配音合成）与代码实现无关，为控制篇幅略去。",
+    ),
+]
+
 # 涉及本机网络环境的内容：**替换成中性表述**而不是整条删除。
 # 早先用整条跳过，结果误删了 4 条重要的项目讨论（只要顺带提了一个词就整段没了）。
 ENV_REPLACEMENTS = {
@@ -155,6 +165,19 @@ def main() -> None:
             if text.startswith("<") and text.endswith(">"):
                 continue
             role = d["type"]
+
+            # 与代码实现无关的制作过程（拍摄技巧、素材筛选、剪辑手法）
+            # 整段略去：这些内容不反映技术能力，展开反而分散阅读重点。
+            skipped = None
+            for lo, hi, note in SKIP_RANGES:
+                if lo <= ts <= hi:
+                    skipped = note
+                    break
+            if skipped:
+                if not any(t[1] == "note" for t in turns[-3:]):
+                    turns.append((ts, "note", skipped))
+                continue
+
             cleaned = redact(text, extra_redactions)
             # 同一次回复常被拆成多条记录（每次工具调用之间断一次），
             # 只留单条会变成一句半，拼起来才读得通
@@ -174,7 +197,8 @@ def main() -> None:
         "> 并省略了工具调用与命令输出，只保留对话文本。原对话中的截图未包含在本文档内。",
         "> 与本机运行环境相关的少量对话已略去，不影响技术过程的完整性。",
         "",
-        f"**统计：** {len(turns)} 轮（user {sum(1 for t in turns if t[1]=='user')} / "
+        f"**统计：** {sum(1 for t in turns if t[1] in ('user','assistant'))} 轮"
+        f"（user {sum(1 for t in turns if t[1]=='user')} / "
         f"assistant {sum(1 for t in turns if t[1]=='assistant')}）",
         "",
         "**三个阶段**（会话中途因上下文长度压缩过两次，下面是压缩造成的三个自然分段，"
@@ -190,6 +214,10 @@ def main() -> None:
         "",
     ]
     for ts, role, text in turns:
+        if role == "note":
+            lines.append(f"> *（{ts}）{text}*")
+            lines.append("")
+            continue
         # 截断放在合并之后做，否则一段回复会被切成好几截
         if role == "assistant" and len(text) > MAX_ASSISTANT_CHARS:
             text = text[:MAX_ASSISTANT_CHARS].rstrip() + "…（后略）"
