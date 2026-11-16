@@ -28,7 +28,7 @@ from starlette.background import BackgroundTask
 from .chunker import chunk_doc
 from .parser import NoTextLayerError, parse_pdf
 from .qa import answer, answer_stream
-from .render import page_count, render_page
+from .render import render_page
 from .semester import (
     USER_DATA_DIR,
     load_assignments,
@@ -301,14 +301,6 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
 
 
 # ---------------------------------------------------------------- 原页图
-
-@router.get("/page-count/{doc_id}")
-def get_page_count(doc_id: str) -> dict:
-    path = _pdf_path(doc_id)
-    if path is None:
-        raise HTTPException(status_code=404, detail="原件不存在。")
-    return {"total": page_count(path)}
-
 
 # file_doc_id 的产出固定是 12 位小写十六进制。只放行这个形状，
 # 挡住 "../" 一类拼进文件路径的输入（实测未校验时能落到 SPA 通配路由，行为不可控）。

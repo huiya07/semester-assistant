@@ -191,8 +191,8 @@ function Message({ m }: { m: Msg }) {
             <QuietDotsWave label="检索资料中…" />
           )}
 
-          {/* not_found 的正文改由下面的琥珀警示框承载，这里不再重复渲染一遍 */}
-          {m.text && m.status !== 'not_found' && (
+          {/* not_found 与 error 的正文改由下面的警示框承载，这里不重复渲染 */}
+          {m.text && m.status !== 'not_found' && m.status !== 'error' && (
             <>
               <div
                 ref={bodyRef}
@@ -222,6 +222,14 @@ function Message({ m }: { m: Msg }) {
 
           {m.status === 'not_found' && (
             <div className="mt-2 flex items-start gap-2 rounded-field border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>{m.text}</span>
+            </div>
+          )}
+
+          {/* 请求失败要看得出来是失败，不能和正常回答长得一样 */}
+          {m.status === 'error' && (
+            <div className="mt-2 flex items-start gap-2 rounded-field border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
               <span>{m.text}</span>
             </div>

@@ -1,7 +1,6 @@
 /** 后端接口封装。开发时经 Vite proxy 转发到 FastAPI。 */
 
 import type {
-  AnswerPayload,
   LibraryPayload,
   SemesterMeta,
   SettingsPayload,
@@ -130,9 +129,7 @@ export const api = {
   },
 
   // ---- 问答 ----
-  ask: (question: string, course?: string) =>
-    req<AnswerPayload>('/ask', { method: 'POST', ...jsonBody({ question, course: course || null }) }),
-
+  // 只保留流式：界面上所有提问都走 /ask/stream，非流式的 api.ask 没有调用点。
   getCourseNames: () => reqWithRetry<{ names: string[] }>('/course-names'),
 
   /**

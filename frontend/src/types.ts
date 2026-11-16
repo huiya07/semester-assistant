@@ -11,16 +11,6 @@ export interface Citation {
 
 export type AnswerStatus = 'ok' | 'not_found' | 'error'
 
-export interface AnswerPayload {
-  status: AnswerStatus
-  text: string
-  citations: Citation[]
-  related: Citation[]
-  searched: string[]
-  best_distance: number | null
-  elapsed?: number
-}
-
 export interface DocItem {
   doc_id: string
   doc_name: string

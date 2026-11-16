@@ -175,7 +175,7 @@ backend/
     store.py            Chroma 读写与检索
     qa.py               检索 → 生成 → 引用校验（三层抗幻觉）
     semester.py         周次计算与周视图
-    api.py              REST 接口层（17 个方法 / 15 条路径：设置/资料库/问答/流式/原页/学期）
+    api.py              REST 接口层（16 个方法 / 14 条路径：设置/资料库/问答/流式/原页/学期）
     main.py             FastAPI 入口，挂载 api 路由与前端静态文件
     render.py           PDF 页渲染为 PNG（出处对照用）
     settings.py         运行期模型配置（界面保存优先于 .env）
