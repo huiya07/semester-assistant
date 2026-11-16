@@ -244,9 +244,10 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
         raise HTTPException(status_code=429, detail=BUSY_DETAIL)
     store = get_store()
 
-    # 双保险：客户端中途断开时 Starlette 不保证把生成器消费完，
-    # 只靠 gen 的 finally 会漏锁（实测断开后 9 秒仍 429）。
-    # 因此再用 BackgroundTask 兜底，并用标志位防止重复 release。
+    # 释放不能只挂在生成器的 finally 上：客户端中途断开时，
+    # Starlette 不保证会把生成器消费到底，finally 就没机会执行。
+    # 这里用标志位兜住两条路——生成器自己的 finally，以及响应对象结束时的
+    # BackgroundTask，谁先到谁放，重复调用不会出错。
     released = False
 
     def release() -> None:
@@ -284,6 +285,7 @@ def post_ask_stream(body: AskIn) -> StreamingResponse:
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",  # 防 nginx 类代理攒包
         },
+        # 响应结束（正常跑完或客户端断开）都会走到这里，作为第二道释放
         background=BackgroundTask(release),
     )
 
