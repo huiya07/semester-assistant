@@ -76,8 +76,8 @@ uv run uvicorn backend.app.main:app --port 8000
 
 | 需要下载 | 大小 | 能否直连 | 说明 |
 |---|---|---|---|
-| Python 依赖（`uv sync`） | 约 1 GB | 官方源在这里 **403 拒绝** | 用 `--default-index` 走华为云，实测 7.5 MB/s |
-| 中文嵌入模型 `bge-small-zh-v1.5` | 约 100 MB | **不能直连** | 代码已默认走 `hf-mirror.com` 镜像，无需额外配置 |
+| Python 依赖（`uv sync`） | 下载约 330 MB，装完约 1.2 GB | 官方源在这里 **403 拒绝** | 用 `--default-index` 走华为云，实测 7.5 MB/s |
+| 中文嵌入模型 `bge-small-zh-v1.5` | 约 95 MB | **不能直连** | 代码已默认走 `hf-mirror.com` 镜像；**开着系统代理会失败，见下方排查** |
 | 前端依赖（`npm install`） | 约 150 MB | 可以 | 国内建议 `--registry=https://registry.npmmirror.com` |
 | DeepSeek API | — | 可以 | 需要自行申请 API Key |
 
@@ -90,7 +90,7 @@ uv run uvicorn backend.app.main:app --port 8000
 | 清华 TUNA | ❌ 本机连续失败（HTTP 000） |
 | 官方 PyPI | ⚠️ 索引可达，但 wheel 下载 **403** |
 
-依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1 GB。
+依赖里的 PyTorch 占了大头，装完整个 `.venv` 约 1.2 GB（空缓存实测 222 秒）。
 
 启动后**第一次提问**才加载嵌入模型（懒加载，约 10–30 秒），期间页面正常显示，第一条回答会明显慢一些。模型加载完就常驻内存，后续提问不再等。
 
@@ -98,6 +98,32 @@ uv run uvicorn backend.app.main:app --port 8000
 
 ```powershell
 $env:HF_ENDPOINT = "https://huggingface.co"
+```
+
+#### 开着代理时下载卡住怎么办
+
+**这是首次运行最常见的卡点**。系统代理（Clash、v2ray 等）开着时，
+`hf-mirror.com` 的请求会走代理，实测直接报
+`SSL: UNEXPECTED_EOF_WHILE_READING`，表现出来是「上传 PDF 后一直转圈，
+没有任何进度」——不是程序坏了，是下载卡在重试。
+
+镜像站还会把权重 302 跳到 `cas-bridge.xethub.hf.co`，所以只把
+`hf-mirror.com` 加白名单不够。两个办法：
+
+```powershell
+# 办法一：启动前清掉代理变量（DeepSeek 接口直连可用）
+$env:HTTP_PROXY = ""; $env:HTTPS_PROXY = ""
+
+# 办法二：保留代理，但让这两个域名绕过
+$env:NO_PROXY = "hf-mirror.com,cas-bridge.xethub.hf.co,*.hf.co"
+```
+
+**下载如果中途断了**：删掉缓存目录再重来，否则会一直是 500
+（程序现在会检测权重文件是否完整，不完整就重新下，但残留目录可能
+让 HuggingFace 判定异常）：
+
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.cache\huggingface\hub\models--BAAI--bge-small-zh-v1.5"
 ```
 
 ### 准备资料

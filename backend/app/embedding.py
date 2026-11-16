@@ -25,16 +25,32 @@ MODEL_TAG = "bge_zh"  # 用于区分不同嵌入模型产生的向量
 QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
 
 
-def _model_cached() -> bool:
-    """模型是否已经在本地缓存。
+# 权重文件至少这么大才算下载完整（实际约 95 MB，这里留足余量）
+_MIN_WEIGHT_BYTES = 1_000_000
 
-    sentence-transformers 每次加载都会向镜像站查一次更新，
-    网络不好时会让启动卡在重试上（实测遇到过 SSL EOF 重试 5 次）。
-    本地已有缓存就直接离线加载，既快又不依赖网络。
+
+def _model_cached() -> bool:
+    """模型权重是否已经完整落到本地。
+
+    注意判据是**权重文件**，不是仓库目录。下载中断会在
+    hub/models--BAAI--bge-small-zh-v1.5 下留下只有 config 的空壳，
+    只判目录存在的话会误认为「已缓存」进而打开离线模式，
+    结果是再也下不下来，上传时报 does not appear to have a file
+    named pytorch_model.bin，且只能手动删目录才能恢复。
     """
     hf_home = Path(os.getenv("HF_HOME", Path.home() / ".cache" / "huggingface"))
-    repo_dir = hf_home / "hub" / "models--BAAI--bge-small-zh-v1.5"
-    return repo_dir.exists()
+    snapshots = hf_home / "hub" / "models--BAAI--bge-small-zh-v1.5" / "snapshots"
+    if not snapshots.is_dir():
+        return False
+    for snap in snapshots.iterdir():
+        for name in ("model.safetensors", "pytorch_model.bin"):
+            f = snap / name
+            try:
+                if f.is_file() and f.stat().st_size >= _MIN_WEIGHT_BYTES:
+                    return True
+            except OSError:
+                continue
+    return False
 
 
 if _model_cached():
