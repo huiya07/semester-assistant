@@ -85,6 +85,11 @@ class AssignmentsIn(BaseModel):
     assignments: list[dict]
 
 
+class CoursePatchIn(BaseModel):
+    # 空字符串表示改回「未分类」
+    course: str = ""
+
+
 # ---------------------------------------------------------------- 设置
 
 @router.get("/settings")
@@ -169,6 +174,19 @@ def delete_doc(doc_id: str) -> dict:
     with _write_lock:
         get_store().purge_document(doc_id)
     return {"ok": True}
+
+
+@router.patch("/library/{doc_id}")
+def patch_doc_course(doc_id: str, body: CoursePatchIn) -> dict:
+    """改一篇文档的归属课程。上传时没选课程，事后在这里补。"""
+    if not _DOC_ID_RE.fullmatch(doc_id):
+        raise HTTPException(status_code=404, detail="文档不存在。")
+    course = body.course.strip()
+    with _write_lock:
+        n = get_store().set_course(doc_id, course)
+    if n == 0:
+        raise HTTPException(status_code=404, detail="文档不存在。")
+    return {"ok": True, "doc_id": doc_id, "course": course, "chunks": n}
 
 
 # ---------------------------------------------------------------- 问答

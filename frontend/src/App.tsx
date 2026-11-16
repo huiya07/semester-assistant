@@ -255,24 +255,123 @@ function Message({ m }: { m: Msg }) {
 
 // ---------------------------------------------------------------- 侧边栏
 
+/** 选课程弹窗：上传完补归属，或者资料库里随时改。 */
+function CourseDialog({
+  target,
+  courseNames,
+  onClose,
+  onSave,
+}: {
+  target: { docId: string; docName: string; course: string } | null
+  courseNames: string[]
+  onClose: () => void
+  onSave: (docId: string, course: string) => Promise<void>
+}) {
+  const [value, setValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (target) setValue(target.course || '')
+  }, [target])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && target) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [target, onClose])
+
+  const save = async () => {
+    if (!target) return
+    setSaving(true)
+    try {
+      await onSave(target.docId, value)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {target && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-ink-900/30 backdrop-blur-[2px]"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 4 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 w-full max-w-[380px] rounded-card border border-surface-3 bg-surface-0 p-5 shadow-pop"
+            role="dialog"
+            aria-modal="true"
+          >
+            <h4 className="text-[14px] font-semibold text-ink-900">这篇资料属于哪门课？</h4>
+            <p className="mt-1 truncate text-[12px] text-ink-500" title={target.docName}>
+              《{target.docName}》
+            </p>
+            <label className="mt-4 block text-[12px] text-ink-500">
+              归属课程
+              <select
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                autoFocus
+                className="mt-1 w-full rounded-field border border-surface-3 bg-surface-1 px-2 py-1.5 text-[13px] text-ink-700 outline-none transition-colors duration-150 focus:border-brand-400"
+              >
+                <option value="">未分类</option>
+                {courseNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-2 text-[11px] leading-relaxed text-ink-400">
+              标了课程之后，提问时可以只在某一门课里检索；不标也能用，资料照样参与全库检索。
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                onClick={onClose}
+                className="rounded-field px-3 py-1.5 text-[12px] text-ink-500 transition-colors hover:bg-surface-1 hover:text-ink-700"
+              >
+                稍后再说
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="rounded-field bg-brand-600 px-3.5 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+              >
+                {saving ? '保存中…' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 function Sidebar({
   docs,
   totalCunks,
   onUpload,
   onDelete,
+  onEditCourse,
   uploading,
-  courseNames,
-  uploadCourse,
-  onCourseChange,
 }: {
   docs: DocItem[]
   totalCunks: number
   onUpload: (f: File) => void
   onDelete: (d: DocItem) => void
+  onEditCourse: (d: DocItem) => void
   uploading: boolean
-  courseNames: string[]
-  uploadCourse: string
-  onCourseChange: (c: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -314,21 +413,6 @@ function Sidebar({
           {uploading ? '正在解析并建立索引…' : '添加资料（PDF）'}
         </button>
 
-        <label className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-500">
-          归属课程
-          <select
-            value={uploadCourse}
-            onChange={(e) => onCourseChange(e.target.value)}
-            className="min-w-0 flex-1 rounded-[6px] border border-surface-3 bg-surface-0 px-1.5 py-1 text-[11px] text-ink-700 outline-none transition-colors duration-150 focus:border-brand-400"
-          >
-            <option value="">未分类</option>
-            {courseNames.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -363,19 +447,22 @@ function Sidebar({
             key={d.doc_id}
             className="group flex items-center gap-2 rounded-field px-2 py-1.5 hover:bg-surface-1"
           >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] leading-5 text-ink-700" title={d.doc_name}>
-                {d.doc_name}
+            <button
+              onClick={() => onEditCourse(d)}
+              className="min-w-0 flex-1 rounded text-left focus-visible:ring-2 focus-visible:ring-brand-400"
+              title="点击修改归属课程"
+            >
+              <div className="truncate text-[13px] leading-5 text-ink-700">{d.doc_name}</div>
+              <div className="-ml-1 mt-0.5 truncate text-[10px] leading-4">
+                {d.course ? (
+                  <span className="rounded bg-brand-50 px-1 py-0.5 text-brand-700">{d.course}</span>
+                ) : (
+                  <span className="px-1 text-ink-300 transition-colors group-hover:text-brand-600">
+                    未分类 · 点击设置
+                  </span>
+                )}
               </div>
-              {d.course && (
-                <div
-                  className="-ml-1 mt-0.5 truncate text-[10px] leading-4 text-brand-700"
-                  title={`归属课程：${d.course}`}
-                >
-                  <span className="rounded bg-brand-50 px-1 py-0.5">{d.course}</span>
-                </div>
-              )}
-            </div>
+            </button>
             <span className="shrink-0 text-[11px] text-ink-500">{d.chunks}</span>
             <button
               onClick={() => onDelete(d)}
@@ -1020,8 +1107,11 @@ export default function App() {
   const [uploading, setUploading] = useState(false)
   const [settings, setSettings] = useState<SettingsPayload | null>(null)
   const [courseNames, setCourseNames] = useState<string[]>([])
-  const [uploadCourse, setUploadCourse] = useState('')
   const [askCourse, setAskCourse] = useState('')
+  // 选课程弹窗的目标：上传完补归属，或点资料改名
+  const [coursePicker, setCoursePicker] = useState<
+    { docId: string; docName: string; course: string } | null
+  >(null)
 
   const [tab, setTab] = useState<'ask' | 'week'>('ask')
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -1035,9 +1125,16 @@ export default function App() {
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const [inkBar, setInkBar] = useState({ left: 0, width: 0 })
 
-  // 首次访问才弹引导；localStorage 不可用（隐私模式）时静默跳过
+  // 首次访问才弹引导；localStorage 不可用（隐私模式）时静默跳过。
+  // 带 ?guide 访问可以强制重看一次，看完把参数从地址栏抹掉，免得残留。
   useEffect(() => {
     try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('guide')) {
+        window.history.replaceState(null, '', window.location.pathname)
+        setGuideOpen(true)
+        return
+      }
       if (!localStorage.getItem(GUIDE_KEY)) setGuideOpen(true)
     } catch {
       /* 忽略 */
@@ -1100,14 +1197,28 @@ export default function App() {
   const upload = async (f: File) => {
     setUploading(true)
     try {
-      const r = await api.uploadPdf(f, uploadCourse)
+      const r = await api.uploadPdf(f)
       await refreshLibrary()
-      const tag = uploadCourse ? ` · ${uploadCourse}` : ''
-      setToast({ kind: 'ok', msg: `已入库 ${r.doc_name}：${r.pages} 页 · ${r.chunks} 个片段${tag}` })
+      setToast({ kind: 'ok', msg: `已入库 ${r.doc_name}：${r.pages} 页 · ${r.chunks} 个片段` })
+      // 传完立刻问归属，不让用户事后才发现传错了地方
+      setCoursePicker({ docId: r.doc_id, docName: r.doc_name, course: '' })
     } catch (e) {
       setToast({ kind: 'err', msg: (e as Error).message })
     } finally {
       setUploading(false)
+    }
+  }
+
+  const saveCourse = async (docId: string, course: string) => {
+    try {
+      await api.setDocCourse(docId, course)
+      await refreshLibrary()
+      // 课程名列表可能因为新标签而变化，顺带刷新下拉选项
+      api.getCourseNames().then((r) => setCourseNames(r.names)).catch(() => {})
+      setToast({ kind: 'ok', msg: course ? `已归到「${course}」` : '已改为未分类' })
+      setCoursePicker(null)
+    } catch (e) {
+      setToast({ kind: 'err', msg: (e as Error).message })
     }
   }
 
@@ -1225,10 +1336,10 @@ export default function App() {
         totalCunks={totalChunks}
         onUpload={upload}
         onDelete={setPendingDelete}
+        onEditCourse={(d) =>
+          setCoursePicker({ docId: d.doc_id, docName: d.doc_name, course: d.course || '' })
+        }
         uploading={uploading}
-        courseNames={courseNames}
-        uploadCourse={uploadCourse}
-        onCourseChange={setUploadCourse}
       />
       </motion.div>
       )}
@@ -1476,6 +1587,14 @@ export default function App() {
         cancelLabel="取消"
         variant="danger"
         size="md"
+      />
+
+      {/* 归属课程：上传后补选，或点资料随时改 */}
+      <CourseDialog
+        target={coursePicker}
+        courseNames={courseNames}
+        onClose={() => setCoursePicker(null)}
+        onSave={saveCourse}
       />
     </div>
   )

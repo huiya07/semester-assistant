@@ -109,6 +109,19 @@ class Store:
         """删除某篇文档的全部切片。切片参数变了要重入库时用。"""
         self.col.delete(where={"doc_id": doc_id})
 
+    def set_course(self, doc_id: str, course: str) -> int:
+        """改一篇文档的归属课程，不动切片内容。返回更新的切片数。
+
+        用户上传时没选课程很常见，事后想归到某门课下，不该逼他删掉重传。
+        """
+        res = self.col.get(where={"doc_id": doc_id}, include=["metadatas"])
+        ids = res["ids"]
+        if not ids:
+            return 0
+        metas = [{**(m or {}), "course": course} for m in res["metadatas"]]
+        self.col.update(ids=ids, metadatas=metas)
+        return len(ids)
+
     def chunk_ids_of(self, doc_id: str) -> list[str]:
         if self.count() == 0:
             return []

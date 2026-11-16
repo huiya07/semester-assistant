@@ -277,6 +277,33 @@ def test_course_tag_and_filter(client):
             client.delete(f"/api/library/{x['doc_id']}")
 
 
+def test_set_doc_course(client):
+    """上传时没选课程，事后可以补，也可以改回未分类。"""
+    up = client.post(
+        "/api/library/upload",
+        files={"file": ("co-late.pdf", _tiny_pdf("Integral converges conditionally"), "application/pdf")},
+    ).json()
+    doc_id = up["doc_id"]
+    assert up["course"] == "", "不传 course 时应落在未分类"
+    try:
+        r = client.patch(f"/api/library/{doc_id}", json={"course": "课程丙"})
+        assert r.status_code == 200, r.text
+        assert r.json()["course"] == "课程丙"
+
+        tags = {d["doc_name"]: d.get("course") for d in client.get("/api/library").json()["docs"]}
+        assert tags["co-late.pdf"] == "课程丙"
+
+        # 改回未分类
+        r = client.patch(f"/api/library/{doc_id}", json={"course": ""})
+        assert r.status_code == 200
+        assert r.json()["course"] == ""
+
+        # 形状合法但不存在的 doc_id
+        assert client.patch("/api/library/000000000000", json={"course": "x"}).status_code == 404
+    finally:
+        client.delete(f"/api/library/{doc_id}")
+
+
 def test_course_names_endpoint(client):
     d = client.get("/api/course-names").json()
     assert isinstance(d["names"], list)

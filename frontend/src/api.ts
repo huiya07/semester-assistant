@@ -112,6 +112,12 @@ export const api = {
   getLibrary: () => reqWithRetry<LibraryPayload>('/library'),
   deleteDoc: (docId: string) =>
     req<{ ok: boolean }>(`/library/${encodeURIComponent(docId)}`, { method: 'DELETE' }),
+  // 改归属课程；course 传空字符串 = 改回未分类
+  setDocCourse: (docId: string, course: string) =>
+    req<{ ok: boolean; doc_id: string; course: string; chunks: number }>(
+      `/library/${encodeURIComponent(docId)}`,
+      { method: 'PATCH', ...jsonBody({ course }) },
+    ),
   uploadPdf: async (file: File, course = '') => {
     const fd = new FormData()
     fd.append('file', file)
